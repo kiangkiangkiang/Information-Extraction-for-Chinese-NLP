@@ -1,6 +1,5 @@
 import os
 import sys
-import warnings
 
 
 def setup_config():
@@ -43,6 +42,7 @@ def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -
     )
 
 
+# 這沒用到 準備刪掉他
 def get_default_data_path(root_dir_name: str = "Chinese-Verdict-NLP") -> str:
     """取得 label studio 的 data 資料夾的路徑
 
