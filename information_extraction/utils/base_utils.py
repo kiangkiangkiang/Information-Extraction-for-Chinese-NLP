@@ -18,8 +18,11 @@ def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -
         root_dir_name (str, optional): 根目錄資料夾名稱. Defaults to "Chinese-Verdict-NLP".
         limits (int, optional): 找根目錄的上限次數. Defaults to 10.
 
+    Raises:
+        ValueError: 找不到 root_dir_name 的路徑。
+
     Returns:
-        str: root dir of root_dir_name, if it found, else 'Fail'.
+        str: root dir of root_dir_name, if it found, else raise ValueError.
     """
 
     # setup root dir
@@ -34,16 +37,14 @@ def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -
             return now_folder
 
     # if root_dir_name not found
-    warnings.warn(
+    raise ValueError(
         f"{root_dir_name} not found or path error. \
-            Please make sure {root_dir_name} is the parent folder of {os.path.basename(__file__)}.",
-        RuntimeWarning,
+            Please make sure {root_dir_name} is the parent folder of {os.path.basename(__file__)}."
     )
-    return "Fail"
 
 
 def get_default_data_path(root_dir_name: str = "Chinese-Verdict-NLP") -> str:
-    """取得data資料夾的路徑
+    """取得 label studio 的 data 資料夾的路徑
 
     Args:
         root_dir_name (str, optional): 根目錄的名稱. Defaults to "Chinese-Verdict-NLP".
@@ -55,15 +56,13 @@ def get_default_data_path(root_dir_name: str = "Chinese-Verdict-NLP") -> str:
     Returns:
         str: data資料夾的路徑
     """
-    root_dir = get_root_dir(root_dir_name=root_dir_name)
-    result = root_dir + "/data/"
 
+    root_dir = get_root_dir(root_dir_name=root_dir_name)
+    result = root_dir + "/data/label_studio/"
     if root_dir == "Fail":
         raise ValueError(
             f"root dir not found. Please make sure {root_dir_name} is the parent folder of {os.path.basename(__file__)}."
         )
-
     if not os.path.exists(result):
         raise ValueError(f"Data path not found. Please make sure {result} is exist")
-
     return result
