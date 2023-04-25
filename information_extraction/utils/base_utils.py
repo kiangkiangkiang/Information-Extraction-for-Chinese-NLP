@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import paddle
 import random
+from typing import List
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -55,6 +56,12 @@ def set_seed(seed: int) -> None:
     paddle.seed(seed)
     random.seed(seed)
     np.random.seed(seed)
+
+
+def shuffle_data(data: list) -> list:
+    """shuffle data"""
+    indexes = np.random.permutation(len(data))
+    return [data[i] for i in indexes]
 
 
 # 這沒用到 準備刪掉他

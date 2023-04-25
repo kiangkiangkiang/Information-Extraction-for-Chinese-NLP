@@ -1,7 +1,7 @@
 from colorama import Back, Fore, Style
 import sys
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from dataclasses import dataclass, field
 
 
@@ -10,16 +10,22 @@ from dataclasses import dataclass, field
 class DefaultConfig:
     root_dir: str = field(default="Chinese-Verdict-NLP", metadata={"help": "The root directory name of this project."})
     label_studio_data_path: str = field(
-        default="/label_data/label_studio/",
+        default="/label_data/",
         metadata={"help": "The label studio output data path after root directory."},
     )
+    """
     doccano_data_path: str = field(
         default="/label_data/doccano/",
         metadata={"help": "The doccano data path (converted from label studio output) after root directory."},
     )
+    """
     experiment_data_path: str = field(
         default="/information_extraction/data/",
         metadata={"help": "The train/dev/test data path (splitted from deccano) after root directory."},
+    )
+    ner_type: List[str] = field(
+        default=["精神慰撫金額", "醫療費用", "薪資收入"],
+        metadata={"help": "The ner/entity type, which must be the same with label studio setting."},
     )
 
 
