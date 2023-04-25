@@ -1,12 +1,9 @@
 import os
 import json
 import argparse
-from base_utils import setup_config, get_root_dir
+from base_utils import get_root_dir
 from exceptions import ConvertingError
 from typing import List
-
-setup_config()
-
 from config import generate_logger
 
 logger = generate_logger(__name__)

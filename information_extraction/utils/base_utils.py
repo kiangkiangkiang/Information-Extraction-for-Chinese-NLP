@@ -1,12 +1,16 @@
 import os
 import sys
+import numpy as np
+import paddle
+import random
 
+current = os.path.dirname(os.path.realpath(__file__))
+parent = os.path.dirname(current)
+sys.path.append(parent)
 
-def setup_config():
-    """取得parent的config.py，以便後續py檔能夠import"""
-    current = os.path.dirname(os.path.realpath(__file__))
-    parent = os.path.dirname(current)
-    sys.path.append(parent)
+from config import generate_logger
+
+logger = generate_logger(__name__)
 
 
 def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -> str:
@@ -40,6 +44,17 @@ def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -
         f"{root_dir_name} not found or path error. \
             Please make sure {root_dir_name} is the parent folder of {os.path.basename(__file__)}."
     )
+
+
+def set_seed(seed: int) -> None:
+    """設定種子
+
+    Args:
+        seed (int): 固定種子
+    """
+    paddle.seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
 
 
 # 這沒用到 準備刪掉他
