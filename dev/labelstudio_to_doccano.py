@@ -4,7 +4,7 @@ import argparse
 from base_utils import get_root_dir
 from exceptions import ConvertingError
 from typing import List
-from config import generate_logger
+from config import generate_logger, DefaultConfig
 
 logger = generate_logger(__name__)
 
@@ -51,8 +51,9 @@ def do_convert(dataset: dict) -> List[dict]:
 
 def convert_to_doccano(
     labelstudio_file: str,
-    doccano_file: str = "doccano_ext.jsonl",
-):
+    doccano_file: str,
+) -> None:
+
     """把labelstudio的output（only json）轉換成paddleNLP內所使用的doccano格式，並寫出檔案（doccano_file）
 
     Args:
@@ -83,10 +84,11 @@ if __name__ == "__main__":
     logger.debug("Now os.getcwd()=" + os.getcwd())
     root_dir = None
     try:
-        root_dir = get_root_dir(root_dir_name="Chinese-Verdict-NLP")
-        default_doccano_file = root_dir + "/data/doccano/doccano_ext.jsonl"
+        root_dir = get_root_dir()
+        default_doccano_file = root_dir + DefaultConfig.doccano_data_path + "doccano_ext.jsonl"
     except:
-        logger.warning("Fail to get root directory.")
+        logger.error("Fail to get root directory.")
+        default_doccano_file = "./doccano_ext.jsonl"
 
     parser.add_argument(
         "--labelstudio_file",
@@ -101,13 +103,13 @@ if __name__ == "__main__":
         convert_to_doccano(args.labelstudio_file, args.doccano_file)
     else:
         if root_dir is not None:
-            data_path = root_dir + "/data/label_studio/"
+            data_path = root_dir + DefaultConfig.label_studio_data_path
             label_studio_data = os.listdir(data_path)
             logger.info(f"{len(label_studio_data)} label studio file will be convert...")
             if args.doccano_file is None:
                 args.doccano_file = [os.path.splitext(data)[0] + "_doccano.jsonl" for data in label_studio_data]
                 for data, output_file in zip(label_studio_data, args.doccano_file):
-                    convert_to_doccano(data_path + data, root_dir + "/data/doccano/" + output_file)
+                    convert_to_doccano(data_path + data, root_dir + DefaultConfig.doccano_data_path + output_file)
             else:
                 for data in label_studio_data:
                     convert_to_doccano(data_path + data, args.doccano_file)

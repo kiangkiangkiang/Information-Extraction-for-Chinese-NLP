@@ -8,17 +8,17 @@ current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from config import generate_logger
+from config import generate_logger, DefaultConfig
 
 logger = generate_logger(__name__)
 
 
-def get_root_dir(root_dir_name: str = "Chinese-Verdict-NLP", limits: int = 10) -> str:
+def get_root_dir(root_dir_name: str = DefaultConfig.root_dir, limits: int = 10) -> str:
     """
     找到根目錄root_dir_name的完整路徑
 
     Args:
-        root_dir_name (str, optional): 根目錄資料夾名稱. Defaults to "Chinese-Verdict-NLP".
+        root_dir_name (str, optional): 根目錄資料夾名稱. Defaults to DefaultConfig.root_dir.
         limits (int, optional): 找根目錄的上限次數. Defaults to 10.
 
     Raises:
@@ -58,11 +58,11 @@ def set_seed(seed: int) -> None:
 
 
 # 這沒用到 準備刪掉他
-def get_default_data_path(root_dir_name: str = "Chinese-Verdict-NLP") -> str:
+def get_default_data_path(root_dir_name: str = DefaultConfig.root_dir) -> str:
     """取得 label studio 的 data 資料夾的路徑
 
     Args:
-        root_dir_name (str, optional): 根目錄的名稱. Defaults to "Chinese-Verdict-NLP".
+        root_dir_name (str, optional): 根目錄的名稱. Defaults to DefaultConfig.root_dir.
 
     Raises:
         ValueError: 根目錄名稱找不到。

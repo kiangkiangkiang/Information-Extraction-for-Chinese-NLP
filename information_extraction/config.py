@@ -2,6 +2,26 @@ from colorama import Back, Fore, Style
 import sys
 import logging
 from typing import Dict, Optional
+from dataclasses import dataclass, field
+
+
+# default config in this project
+@dataclass
+class DefaultConfig:
+    root_dir: str = field(default="Chinese-Verdict-NLP", metadata={"help": "The root directory name of this project."})
+    label_studio_data_path: str = field(
+        default="/label_data/label_studio/",
+        metadata={"help": "The label studio output data path after root directory."},
+    )
+    doccano_data_path: str = field(
+        default="/label_data/doccano/",
+        metadata={"help": "The doccano data path (converted from label studio output) after root directory."},
+    )
+    experiment_data_path: str = field(
+        default="/information_extraction/data/",
+        metadata={"help": "The train/dev/test data path (splitted from deccano) after root directory."},
+    )
+
 
 # logging
 class ColoredFormatter(logging.Formatter):
@@ -48,7 +68,3 @@ def generate_logger(name: str = __name__) -> logging.Logger:
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
     return logger
-
-
-# label studio data name
-label_studio_default_data = []
