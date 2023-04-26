@@ -1,9 +1,11 @@
-from config import get_logger
+from ..utils.base_utils import set_seed
 
-logger = get_logger(name=__name__)
+set_seed()
 
-logger.debug("asdfa")
-logger.info("123")
+
+def finetune():
+    pass
+
 
 if __name__ == "__main__":
     print(123)

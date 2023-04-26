@@ -8,7 +8,6 @@ import argparse
 
 
 logger = generate_logger(name=__name__)
-base_config = BaseConfig()
 
 
 def add_negative_samples():
@@ -18,6 +17,19 @@ def add_negative_samples():
 
 
 def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
+    """轉換格式邏輯程式，將label studio output轉換成UIE模型所吃的格式。
+
+    Args:
+        dataset (List[dict]): label studio output的json檔。
+        is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
+
+    Raises:
+        ValueError: 任務格式錯誤（此邏輯程式只處理NER任務，有Relation標籤無法處理）。
+
+    Returns:
+        List[dict]: 模型所吃的訓練格式。
+    """
+
     logger.debug(f"In convert_format, data len = {len(dataset)}")
     results = []
     for data in dataset:
@@ -49,6 +61,19 @@ def do_split(
     split_ratio: List[int] = [0.8, 0.1, 0.1],
     is_shuffle: bool = True,
 ) -> Tuple[List[dict], List[dict], List[dict]]:
+    """分割資料的邏輯程式
+
+    Args:
+        dataset (List[dict]): label studio output的json檔
+        split_ratio (List[int], optional): 分割資料，training/eval/testing，加總 = 1. Defaults to [0.8, 0.1, 0.1].
+        is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
+
+    Raises:
+        ValueError: 資料集太小或分割比例太小，導致沒有training資料。
+
+    Returns:
+        Tuple[List[dict], List[dict], List[dict]]: 回傳training data，eval data，testing data．
+    """
 
     logger.debug(f"in do_split, len(dataset)={len(dataset)}")
 
@@ -76,6 +101,21 @@ def split_labelstudio(
     split_ratio: List[int] = [0.8, 0.1, 0.1],
     is_shuffle: bool = True,
 ) -> None:
+    """主要轉換的程式，把label studio output (only json, \
+        only NER (Relation Extraction: NER))轉換成模型所吃的input。
+
+    Args:
+        labelstudio_file (str): label studio output的檔案。Default 在label_data/ 內。
+        save_dir (str, optional): 轉換後的training/eval/testing資料. Defaults 在information_extraction/data/內.
+        seed (int, optional): 固定種子. Defaults to 100.
+        split_ratio (List[int], optional): 分割資料，training/eval/testing，加總 = 1. Defaults to [0.8, 0.1, 0.1].
+        is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
+
+    Raises:
+        ValueError: 找不label studio檔案。
+        ValueError: split_ratio長度不等於3，若不分割資料可用[1, 0, 0]設定。
+        ValueError: split_ratio加總不等於1。
+    """
 
     logger.info(f"Converting {os.path.basename(labelstudio_file)} into {save_dir}...")
     set_seed(seed)
@@ -114,6 +154,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     logger.info("This dir = " + os.getcwd())
+    base_config = BaseConfig()
 
     if base_config.root_dir:
         default_labelstudio_file = base_config.root_dir + base_config.label_studio_data_path
