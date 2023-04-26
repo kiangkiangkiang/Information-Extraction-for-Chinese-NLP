@@ -1,11 +1,11 @@
-from base_utils import set_seed, shuffle_data, get_root_dir
+from base_utils import set_seed, shuffle_data
 from config import BaseConfig, generate_logger
 from typing import List, Tuple
 import json
 import os
 from decimal import Decimal
 import argparse
-import pdb
+
 
 logger = generate_logger(name=__name__)
 base_config = BaseConfig()
@@ -79,7 +79,7 @@ def split_labelstudio(
 
     logger.info(f"Converting {os.path.basename(labelstudio_file)} into {save_dir}...")
     set_seed(seed)
-    pdb.set_trace()
+
     if not os.path.exists(labelstudio_file):
         raise ValueError(
             f"Label studio file not found in {labelstudio_file}. Please input the correct path of label studio file."
