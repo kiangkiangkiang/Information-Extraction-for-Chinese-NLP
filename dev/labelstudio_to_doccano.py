@@ -4,7 +4,7 @@ import argparse
 from base_utils import get_root_dir
 from exceptions import ConvertingError
 from typing import List
-from config import generate_logger, DefaultConfig
+from config import generate_logger, BaseConfig
 
 logger = generate_logger(__name__)
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     root_dir = None
     try:
         root_dir = get_root_dir()
-        default_doccano_file = root_dir + DefaultConfig.doccano_data_path + "doccano_ext.jsonl"
+        default_doccano_file = root_dir + BaseConfig.doccano_data_path + "doccano_ext.jsonl"
     except:
         logger.error("Fail to get root directory.")
         default_doccano_file = "./doccano_ext.jsonl"
@@ -103,15 +103,45 @@ if __name__ == "__main__":
         convert_to_doccano(args.labelstudio_file, args.doccano_file)
     else:
         if root_dir is not None:
-            data_path = root_dir + DefaultConfig.label_studio_data_path
+            data_path = root_dir + BaseConfig.label_studio_data_path
             label_studio_data = os.listdir(data_path)
             logger.info(f"{len(label_studio_data)} label studio file will be convert...")
             if args.doccano_file is None:
                 args.doccano_file = [os.path.splitext(data)[0] + "_doccano.jsonl" for data in label_studio_data]
                 for data, output_file in zip(label_studio_data, args.doccano_file):
-                    convert_to_doccano(data_path + data, root_dir + DefaultConfig.doccano_data_path + output_file)
+                    convert_to_doccano(data_path + data, root_dir + BaseConfig.doccano_data_path + output_file)
             else:
                 for data in label_studio_data:
                     convert_to_doccano(data_path + data, args.doccano_file)
         else:
             raise ValueError("Label studio file not found. Please input the correct path of label studio file.")
+
+
+def _get_root_dir(self, root_dir_name: str = self.root_dir_name, limits: int = 10) -> str:
+    """
+    找到根目錄root_dir_name的完整路徑
+
+    Args:
+        root_dir_name (str, optional): 根目錄資料夾名稱. Defaults to base_config.root_dir.
+        limits (int, optional): 找根目錄的上限次數. Defaults to 10.
+
+    Returns:
+        str: root dir of root_dir_name, if it found, else raise ValueError.
+    """
+
+    # setup root dir
+    now_folder = os.path.dirname(os.path.realpath(__file__))
+    now_folder_name = os.path.basename(now_folder)
+    for _ in range(limits):
+        if now_folder_name != root_dir_name:
+            now_folder = os.path.dirname(now_folder)
+            now_folder_name = os.path.basename(now_folder)
+        else:
+            # os.chdir(now_folder)
+            return now_folder
+
+    # if root_dir_name not found
+    raise ValueError(
+        f"{root_dir_name} not found or path error. \
+                Please make sure {root_dir_name} is the parent folder of {os.path.basename(__file__)}."
+    )

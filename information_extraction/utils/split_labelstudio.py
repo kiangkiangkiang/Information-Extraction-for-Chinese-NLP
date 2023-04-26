@@ -1,12 +1,14 @@
 from base_utils import set_seed, shuffle_data, get_root_dir
-from config import DefaultConfig, generate_logger
+from config import BaseConfig, generate_logger
 from typing import List, Tuple
 import json
 import os
 from decimal import Decimal
 import argparse
+import pdb
 
 logger = generate_logger(name=__name__)
+base_config = BaseConfig()
 
 
 def add_negative_samples():
@@ -21,7 +23,7 @@ def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
     for data in dataset:
         uie_format = {
             output_type: {"content": data["data"]["text"], "result_list": [], "prompt": output_type}
-            for output_type in DefaultConfig.ner_type
+            for output_type in base_config.ner_type
         }
         for label_result in data["annotations"][0]["result"]:
             if label_result["type"] != "labels":
@@ -53,13 +55,12 @@ def do_split(
     if is_shuffle:
         dataset = shuffle_data(dataset)
 
-    p1 = int(len(dataset) * split_ratio[0])
-    p2 = int(len(dataset) * (split_ratio[0] + split_ratio[1]))
+    p1 = round(len(dataset) * split_ratio[0])
+    p2 = round(len(dataset) * (split_ratio[0] + split_ratio[1]))
 
     if p1 <= 0:
         raise ValueError(f"Number of training data is too small {p1} <= 0")
 
-    # TODO check special case: [1, 0, 0]
     return (
         convert_format(dataset[:p1], is_shuffle),
         convert_format(dataset[p1:p2], is_shuffle),
@@ -78,9 +79,11 @@ def split_labelstudio(
 
     logger.info(f"Converting {os.path.basename(labelstudio_file)} into {save_dir}...")
     set_seed(seed)
-
+    pdb.set_trace()
     if not os.path.exists(labelstudio_file):
-        raise ValueError("Label studio file not found. Please input the correct path of label studio file.")
+        raise ValueError(
+            f"Label studio file not found in {labelstudio_file}. Please input the correct path of label studio file."
+        )
 
     if not os.path.exists(save_dir):
         logger.warning(f"{save_dir} not found. Automatically making a directory...")
@@ -99,7 +102,6 @@ def split_labelstudio(
             dataset = json.loads(content)
         splitted_data = do_split(dataset=dataset, split_ratio=split_ratio, is_shuffle=is_shuffle)
 
-    # TODO test work?
     for data, data_name in zip(splitted_data, ("training_data.txt", "eval_data.txt", "testing_data.txt")):
         logger.debug(f"len({data_name}) = {len(data)}")
         with open(save_dir + data_name, "w", encoding="utf-8") as outfile:
@@ -111,12 +113,12 @@ def split_labelstudio(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    try:
-        root_dir = get_root_dir()
-        default_labelstudio_file = root_dir + DefaultConfig.label_studio_data_path
-        default_save_dir = root_dir + DefaultConfig.experiment_data_path
-    except:
-        logger.error("Fail to get root directory.")
+    logger.info("This dir = " + os.getcwd())
+
+    if base_config.root_dir:
+        default_labelstudio_file = base_config.root_dir + base_config.label_studio_data_path
+        default_save_dir = base_config.root_dir + base_config.experiment_data_path
+    else:
         default_save_dir, default_labelstudio_file = "./", None
 
     parser.add_argument(
@@ -143,7 +145,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.labelstudio_file == root_dir + DefaultConfig.label_studio_data_path:
+    if args.labelstudio_file == base_config.root_dir + base_config.label_studio_data_path:
         label_studio_data = os.listdir(args.labelstudio_file)
         if len(label_studio_data) == 1:
             split_labelstudio(
@@ -157,11 +159,11 @@ if __name__ == "__main__":
             logger.info(f"There is/are {len(label_studio_data)} label studio file(s) will be convert...")
             label_studio_file_name = [os.path.splitext(data)[0] for data in label_studio_data]
             for data, name in zip(label_studio_data, label_studio_file_name):
-                os.makedirs(args.save_dir + "data_for_" + name)
-                args.save_dir = args.save_dir + "data_for_" + name + "/"
+                if not os.path.exists(args.save_dir + "data_for_" + name):
+                    os.makedirs(args.save_dir + "data_for_" + name)
                 split_labelstudio(
-                    labelstudio_file=root_dir + DefaultConfig.label_studio_data_path + data,
-                    save_dir=args.save_dir,
+                    labelstudio_file=base_config.root_dir + base_config.label_studio_data_path + data,
+                    save_dir=args.save_dir + "data_for_" + name + "/",
                     seed=args.seed,
                     split_ratio=args.split_ratio,
                     is_shuffle=eval(args.is_shuffle),

@@ -2,7 +2,7 @@ from base_utils import get_root_dir, set_seed
 from typing import List
 import argparse
 from paddlenlp.trainer.argparser import strtobool
-from config import generate_logger, DefaultConfig
+from config import generate_logger, BaseConfig
 import os
 from decimal import Decimal
 
@@ -42,8 +42,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     try:
         root_dir = get_root_dir()
-        default_deccano_file = root_dir + DefaultConfig.doccano_data_path
-        default_save_dir = root_dir + DefaultConfig.experiment_data_path
+        default_deccano_file = root_dir + BaseConfig.doccano_data_path
+        default_save_dir = root_dir + BaseConfig.experiment_data_path
     except:
         logger.error("Fail to get root directory.")
         default_deccano_file = None
