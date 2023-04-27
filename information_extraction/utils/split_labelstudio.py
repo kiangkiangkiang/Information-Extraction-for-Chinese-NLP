@@ -1,5 +1,6 @@
 from base_utils import set_seed, shuffle_data
-from config import BaseConfig, generate_logger
+from config import BaseConfig
+from base_logger import generate_logger
 from typing import List, Tuple
 import json
 import os
