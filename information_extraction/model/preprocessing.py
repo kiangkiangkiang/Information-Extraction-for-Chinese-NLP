@@ -90,19 +90,67 @@ def read_finetune_data(data_path, max_seq_len=512):
             # It include three summary tokens.
             if max_seq_len <= len(prompt) + 3:
                 raise ValueError("The value of max_seq_len is too small. Please set a larger value.")
-            max_content_len = max_seq_len - len(prompt) - 3
-            content_len = len(content)
-            if content_len <= max_content_len:
-                yield json_line
-            else:
-                for i, interval_start in enumerate(range(max_content_len // content_len)):
-                    
+            # max_content_len = max_seq_len - len(prompt) - 3
+            # if len(content) <= max_content_len:
+            #    yield json_line
+            # else:
+            result_list = json_line["result_list"]
+            accumulate_token = 0
 
-                    
-                pass
+            # start pop all content
+            # TODO test len(content) <= max_content_len:
+            while len(content) > 0:
+                max_content_len = max_seq_len - len(prompt) - 3
+                current_content_result = []
+                current_content = []
 
-16//17
+                # pop result in current content
+                while len(result_list) > 0:
+                    if (
+                        result_list[0]["start"] > result_list[0]["end"]
+                        or result_list[0]["end"] - result_list[0]["start"] > max_content_len
+                    ):
+                        raise DataError(
+                            f"Error in result list. Invalid start or end location\
+                                (start: {result_list[0]['start']}, end: {result_list[0]['end']}).\
+                                    Please check the data in line {i} of {data_path}."
+                        )
+                    if result_list[0]["start"] < max_content_len:
+                        if result_list[0]["end"] > max_content_len:
+                            # Result-Cross case: result cross interval of content
+                            # dynamic adjust max_content_len to escape Result-Cross case
+                            max_content_len = result_list[0]["start"]
+                            break
+                        else:
+                            current_content_result.append(result_list.pop(0))
+                    else:
+                        break  # result list is sorted by start
+
+                current_content = content[:max_content_len]
+                content = content[max_content_len:]
+
+                # update result index of start/end
+                for result in current_content_result:
+                    result["start"] -= accumulate_token
+                    result["end"] -= accumulate_token
+
+                accumulate_token += max_content_len
+
+                yield {
+                    "content": current_content,
+                    "result_list": current_content_result,
+                    "prompt": prompt,
+                }
+
+
+# en read_finetune_data
+9902 / 512
+9728
+512 * 19
+16 // 17
+19 % 17
 [(i, interval_start * 512) for i, interval_start in enumerate(range(9802 // 512))]
+
 
 def reader(data_path, max_seq_len=512):
     """
