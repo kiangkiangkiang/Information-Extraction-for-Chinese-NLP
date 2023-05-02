@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from dataclasses import dataclass, field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict, Union
 from paddlenlp.trainer import TrainingArguments
 from paddlenlp.transformers import AutoTokenizer
 
@@ -77,10 +77,21 @@ class IETrainingArguments(TrainingArguments):
     )
 
 
-def read_finetune_data(data_path, max_seq_len=512):
+def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]:
+    """讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
+
+    Args:
+        data_path (str): 資料路徑（轉換後的training/eval/testing資料）。
+        max_seq_len (int, optional): 模型input最大長度. Defaults to 512.
+
+    Raises:
+        ValueError: max_seq_len太小或prompt太長。
+        DataError: 原始資料有問題（output of label studio），可能是entity太長或end的位置 < start的位置。
+
+    Yields:
+        Iterator[Dict[str, str]]: 每個batch所吃的原始文本（Before tokenization）。
     """
-    read json
-    """
+
     with open(data_path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             json_line = json.loads(line)
@@ -90,15 +101,10 @@ def read_finetune_data(data_path, max_seq_len=512):
             # It include three summary tokens.
             if max_seq_len <= len(prompt) + 3:
                 raise ValueError("The value of max_seq_len is too small. Please set a larger value.")
-            # max_content_len = max_seq_len - len(prompt) - 3
-            # if len(content) <= max_content_len:
-            #    yield json_line
-            # else:
             result_list = json_line["result_list"]
             accumulate_token = 0
 
             # start pop all content
-            # TODO test len(content) <= max_content_len:
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
@@ -106,6 +112,7 @@ def read_finetune_data(data_path, max_seq_len=512):
 
                 # pop result in current content
                 while len(result_list) > 0:
+                    print("result[start]: ", result_list[0]["start"])
                     if (
                         result_list[0]["start"] > result_list[0]["end"]
                         or result_list[0]["end"] - result_list[0]["start"] > max_content_len
@@ -119,21 +126,23 @@ def read_finetune_data(data_path, max_seq_len=512):
                         if result_list[0]["end"] > max_content_len:
                             # Result-Cross case: result cross interval of content
                             # dynamic adjust max_content_len to escape Result-Cross case
+                            logger.debug(
+                                f"Result-Cross: content: {json_line['content']}, prompt: {prompt}, result_list: {json_line['result_list']}.\n\
+                                Result-Cross in {result_list[0]}."
+                            )
                             max_content_len = result_list[0]["start"]
+                            result_list[0]["start"] -= max_content_len
+                            result_list[0]["end"] -= max_content_len
                             break
                         else:
                             current_content_result.append(result_list.pop(0))
                     else:
+                        result_list[0]["start"] -= max_content_len
+                        result_list[0]["end"] -= max_content_len
                         break  # result list is sorted by start
 
                 current_content = content[:max_content_len]
                 content = content[max_content_len:]
-
-                # update result index of start/end
-                for result in current_content_result:
-                    result["start"] -= accumulate_token
-                    result["end"] -= accumulate_token
-
                 accumulate_token += max_content_len
 
                 yield {
@@ -143,104 +152,23 @@ def read_finetune_data(data_path, max_seq_len=512):
                 }
 
 
-# en read_finetune_data
-9902 / 512
-9728
-512 * 19
-16 // 17
-19 % 17
-[(i, interval_start * 512) for i, interval_start in enumerate(range(9802 // 512))]
+def get_dynamic_max_length(examples, default_max_length: int, dynamic_max_length: List[int]) -> int:
+    """get max_length by examples which you can change it by examples in batch"""
+    cur_length = len(examples[0]["input_ids"])
+    max_length = default_max_length
+    for max_length_option in sorted(dynamic_max_length):
+        if cur_length <= max_length_option:
+            max_length = max_length_option
+            break
+    return max_length
 
 
-def reader(data_path, max_seq_len=512):
-    """
-    read json
-    """
-    with open(data_path, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            json_line = json.loads(line)
-            content = json_line["content"].strip()
-            prompt = json_line["prompt"]
-            # Model Input is aslike: [CLS] Prompt [SEP] Content [SEP]
-            # It include three summary tokens.
-            if max_seq_len <= len(prompt) + 3:
-                raise ValueError("The value of max_seq_len is too small. Please set a larger value.")
-            max_content_len = max_seq_len - len(prompt) - 3
-            if len(content) <= max_content_len:
-                yield json_line
-            else:
-                result_list = json_line["result_list"]
-                json_lines = []
-                accumulate = 0
-                while True:
-                    # content 會一直被砍, result_list也會一直被砍
-                    # 反正這邊所有 while true 的邏輯應該都是慢慢砍掉的概念
-
-                    cur_result_list = []
-                    # 前處理result (跑遍所有result): 1. test不合理的result, 2. 測試有沒有
-                    for result in result_list:
-                        if result["end"] - result["start"] > max_content_len:
-                            raise DataError(
-                                f"result['end'] - result['start'] exceeds max_content_len,\
-                                     which will result an invalid instance being returned.\
-                                        Please check the data in line {i} of {data_path}."
-                            )
-                        # 這段要看完才懂，因為會一直砍，所以要看到後面他到底改了啥
-                        if (
-                            result["start"] + 1 <= max_content_len < result["end"]
-                            and result["end"] - result["start"] <= max_content_len
-                        ):
-                            max_content_len = result["start"]
-                            break
-
-                    cur_content = content[:max_content_len]
-                    res_content = content[max_content_len:]
-
-                    while True:
-                        # 砍完了 -> break
-                        if len(result_list) == 0:
-                            break
-
-                        # 如果還沒砍完
-                        elif result_list[0]["end"] <= max_content_len:
-                            if result_list[0]["end"] > 0:
-                                cur_result = result_list.pop(0)
-                                cur_result_list.append(cur_result)
-                            else:
-                                cur_result_list = [result for result in result_list]
-                                break
-                        else:
-                            break
-
-                    json_line = {"content": cur_content, "result_list": cur_result_list, "prompt": prompt}
-                    json_lines.append(json_line)
-
-                    for result in result_list:
-                        if result["end"] <= 0:
-                            break
-                        result["start"] -= max_content_len
-                        result["end"] -= max_content_len
-                    accumulate += max_content_len
-                    max_content_len = max_seq_len - len(prompt) - 3
-                    if len(res_content) == 0:
-                        break
-                    elif len(res_content) < max_content_len:
-                        json_line = {"content": res_content, "result_list": result_list, "prompt": prompt}
-                        json_lines.append(json_line)
-                        break
-                    else:
-                        content = res_content
-
-                for json_line in json_lines:
-                    yield json_line
-
-
-def convert_to_uie_input(
-    data: str = None,
+def convert_to_uie_format(
+    data: Dict[str, str] = None,
     tokenizer: Any = None,
-    multilingual: bool = False,
-    max_seq_length: Optional[int] = 512,
+    max_seq_length: int = 512,
     dynamic_max_length: Optional[List[int]] = None,
-):
+    multilingual: Optional[bool] = False,
+) -> Dict[str, Union[str, float]]:
 
     pass

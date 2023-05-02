@@ -154,7 +154,7 @@ def split_labelstudio(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    logger.info("This dir = " + os.getcwd())
+    logger.debug("This dir = " + os.getcwd())
     base_config = BaseConfig()
 
     if base_config.root_dir:
