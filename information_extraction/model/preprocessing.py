@@ -2,16 +2,15 @@ import os
 import sys
 import json
 from dataclasses import dataclass, field
-from typing import Optional, List, Any, Dict, Union
+from typing import Optional, List, Any, Dict, Union, Tuple
 from paddlenlp.trainer import TrainingArguments
-from paddlenlp.transformers import AutoTokenizer
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from config import generate_logger, BaseConfig
-from utils.exceptions import DataError
+from config import generate_logger
+from utils.exceptions import DataError, PreprocessingError
 
 logger = generate_logger(name=__name__)
 
@@ -30,21 +29,13 @@ class DataArguments:
 
     dev_path: str = field(default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."})
 
-    max_seq_length: Optional[int] = field(
+    max_seq_len: Optional[int] = field(
         default=512,
         metadata={
             "help": "The maximum total input sequence length after tokenization. Sequences longer "
             "than this will be truncated, sequences shorter will be padded."
         },
     )
-
-    dynamic_max_length: Optional[List[int]] = field(
-        default=None,
-        metadata={"help": "dynamic max length from batch, it can be array of length, eg: 16 32 64 128"},
-    )
-
-    def __iter__(self):
-        return iter((self.train_path, self.dev_path, self.max_seq_length, self.dynamic_max_length))
 
 
 @dataclass
@@ -68,7 +59,7 @@ class ModelArguments:
     multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
 
 
-# information extraction training arguments
+# information extraction (IE) training arguments
 @dataclass
 class IETrainingArguments(TrainingArguments):
     output_dir: str = field(
@@ -78,7 +69,10 @@ class IETrainingArguments(TrainingArguments):
 
 
 def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]:
-    """讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
+    """
+    Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
+    Model Input Format: [CLS] Prompt [SEP] Content [SEP].
+    Result-Cross case: result cross interval of each subcontent.
 
     Args:
         data_path (str): 資料路徑（轉換後的training/eval/testing資料）。
@@ -97,22 +91,20 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
             json_line = json.loads(line)
             content = json_line["content"].strip()
             prompt = json_line["prompt"]
-            # Model Input is aslike: [CLS] Prompt [SEP] Content [SEP]
-            # It include three summary tokens.
+
+            # 3 means '[CLS] [SEP] [SEP] in [CLS] Prompt [SEP] Content [SEP]
             if max_seq_len <= len(prompt) + 3:
                 raise ValueError("The value of max_seq_len is too small. Please set a larger value.")
             result_list = json_line["result_list"]
             accumulate_token = 0
 
-            # start pop all content
+            # start pop all subcontent (segment by max_seq_len)
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
-                current_content = []
 
-                # pop result in current content
+                # pop result in subcontent
                 while len(result_list) > 0:
-                    print("result[start]: ", result_list[0]["start"])
                     if (
                         result_list[0]["start"] > result_list[0]["end"]
                         or result_list[0]["end"] - result_list[0]["start"] > max_content_len
@@ -124,8 +116,7 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                         )
                     if result_list[0]["start"] < max_content_len:
                         if result_list[0]["end"] > max_content_len:
-                            # Result-Cross case: result cross interval of content
-                            # dynamic adjust max_content_len to escape Result-Cross case
+                            # Result-Cross case: using dynamic adjust max_content_len to escape the problem.
                             logger.debug(
                                 f"Result-Cross: content: {json_line['content']}, prompt: {prompt}, result_list: {json_line['result_list']}.\n\
                                 Result-Cross in {result_list[0]}."
@@ -141,34 +132,126 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                         result_list[0]["end"] -= max_content_len
                         break  # result list is sorted by start
 
-                current_content = content[:max_content_len]
-                content = content[max_content_len:]
-                accumulate_token += max_content_len
-
                 yield {
-                    "content": current_content,
+                    "content": content[:max_content_len],
                     "result_list": current_content_result,
                     "prompt": prompt,
                 }
 
+                content = content[max_content_len:]
+                accumulate_token += max_content_len
 
-def get_dynamic_max_length(examples, default_max_length: int, dynamic_max_length: List[int]) -> int:
-    """get max_length by examples which you can change it by examples in batch"""
-    cur_length = len(examples[0]["input_ids"])
-    max_length = default_max_length
-    for max_length_option in sorted(dynamic_max_length):
-        if cur_length <= max_length_option:
-            max_length = max_length_option
-            break
-    return max_length
+
+def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:
+    """Scale the offset_mapping in tokenization output to align with the prompt learning format.
+
+    Note: 因為 tokenize 後有些字會被 tokenize 在一起，所以 index 會和原本的有所差異，因此需做調整，將 tokenize 前後的 index 對齊。
+
+    Args:
+        offset_mapping (Tuple[Tuple[int, int]]): Tokenization outpu. Use argument 'return_offsets_mapping=True'.
+
+    Returns:
+        1. List[List[int, int]]: Scaled format, which is to adjust index after adding '[CLS] prompt [SEP]'.
+        2. int: Drift term, which defines the scaling of drift after adjustment.
+    """
+
+    offset_mapping = [list(x) for x in offset_mapping]
+    drift = 0
+    for index in range(1, len(offset_mapping)):
+        mapping = offset_mapping[index]
+        if mapping[0] == 0 and mapping[1] == 0 and drift == 0:
+            drift = offset_mapping[index - 1][1] + 1  # [SEP] token
+        if mapping[0] == 0 and mapping[1] == 0:
+            continue
+        offset_mapping[index][0] += drift
+        offset_mapping[index][1] += drift
+    return offset_mapping, drift
+
+
+def align_to_offset_mapping(origin_index: int, offset_mapping: List[List[int]]) -> int:
+    """Align the original index (start/end index in result_list) to tokenized (offset_mapping) index.
+
+    Args:
+        origin_index (int): start/end index in result_list.
+        offset_mapping (List[List[int, int]]): offset_mapping index after tokenization.
+
+    Raises:
+        PreprocessingError: Cannot find original index in offset_mapping.
+
+    Returns:
+        int: Aligned index.
+    """
+
+    for index, span in enumerate(offset_mapping):
+        if span[0] <= origin_index < span[1]:
+            return index
+
+    raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
 
 
 def convert_to_uie_format(
-    data: Dict[str, str] = None,
-    tokenizer: Any = None,
-    max_seq_length: int = 512,
-    dynamic_max_length: Optional[List[int]] = None,
+    data: Dict[str, str],
+    tokenizer: Any,
+    max_seq_len: int = 512,
     multilingual: Optional[bool] = False,
 ) -> Dict[str, Union[str, float]]:
+    """此方法主要做兩件事情：
+    1. Tokenization.
+    2. 將 result_list 的 start/end index 對齊 tokenization 後的位置。
 
-    pass
+    Note: 在 finetune.py 中，設定此方法為預設 Callback Function，可根據任務或模型換成自定義方法。
+
+    Args:
+        data (Dict[str, str], optional): 切片後的文本，通常來自於 read_finetune_data() 的結果
+            格式為 {"content": subcontent, "result_list": result_list_in_subcontent, "prompt": prompt}.
+        tokenizer (Any, optional): paddlenlp.transformers.AutoTokenizer
+        max_seq_len (int, optional): 切片文本的最大長度，通常與 read_finetune_data() 一致，truncation 預設為 True. Defaults to 512.
+        multilingual (Optional[bool], optional): Whether the model is a multilingual model. Defaults to False.
+
+    Returns:
+        Dict[str, Union[str, float]]: 模型真正的 input 格式。
+    """
+
+    # Tokenization and Concate to the following format: [CLS] prompt [SEP] content [SEP]
+    encoded_inputs = tokenizer(
+        text=[data["prompt"]],
+        text_pair=[data["content"]],
+        truncation=True,
+        max_seq_len=max_seq_len,
+        pad_to_max_seq_len=True,
+        return_attention_mask=True,
+        return_position_ids=True,
+        return_dict=False,
+        return_offsets_mapping=True,
+    )[0]
+
+    # initialize start_ids, end_ids as 0.0
+    start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
+
+    # adjust offset_mapping
+    adjusted_offset_mapping, drift = drift_offsets_mapping(offset_mapping=encoded_inputs["offset_mapping"])
+
+    # align original index to tokenized (offset_mapping) index
+    for item in data["result_list"]:
+        aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
+        aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
+        start_ids[aligned_start_index] = 1.0
+        end_ids[aligned_end_index] = 1.0
+
+    return (
+        {
+            "input_ids": encoded_inputs["input_ids"],
+            "position_ids": encoded_inputs["position_ids"],
+            "start_positions": start_ids,
+            "end_positions": end_ids,
+        }
+        if multilingual
+        else {
+            "input_ids": encoded_inputs["input_ids"],
+            "token_type_ids": encoded_inputs["token_type_ids"],
+            "position_ids": encoded_inputs["position_ids"],
+            "attention_mask": encoded_inputs["attention_mask"],
+            "start_positions": start_ids,
+            "end_positions": end_ids,
+        }
+    )

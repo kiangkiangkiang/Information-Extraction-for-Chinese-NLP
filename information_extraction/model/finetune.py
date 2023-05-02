@@ -23,9 +23,8 @@ ML_FLOW = True  # Add MLflow for experiment # TODO change mlflow to False
 def finetune(
     train_path: str,
     dev_path: str,
-    max_seq_length: int = 512,
+    max_seq_len: int = 512,
     model_name_or_path: str = "uie-base",
-    dynamic_max_length: Optional[List[int]] = None,
     export_model_dir: Optional[str] = None,
     convert_and_tokenize_function: Optional[
         Callable[[Dict[str, str], Any, int], Dict[str, Union[str, float]]]
@@ -94,8 +93,7 @@ def finetune(
     convert_function = partial(
         convert_and_tokenize_function,
         tokenizer=tokenizer,
-        max_seq_len=max_seq_length,
-        dynamic_max_length=dynamic_max_length,
+        max_seq_len=max_seq_len,
         multilingual=multilingual,
     )
 
@@ -133,8 +131,7 @@ if __name__ == "__main__":
     finetune(
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
-        max_seq_length=data_args.max_seq_length,
-        dynamic_max_length=data_args.dynamic_max_length,
+        max_seq_len=data_args.max_seq_len,
         model_name_or_path=model_args.model_name_or_path,
         export_model_dir=model_args.export_model_dir,
         multilingual=model_args.multilingual,
