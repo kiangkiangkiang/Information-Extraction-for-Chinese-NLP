@@ -1,10 +1,4 @@
-from preprocessing import (
-    DataArguments,
-    ModelArguments,
-    IETrainingArguments,
-    read_finetune_data,
-    convert_to_uie_format,
-)
+from preprocessing import *
 from paddlenlp.trainer import (
     PdArgumentParser,
     get_last_checkpoint,
@@ -12,28 +6,20 @@ from paddlenlp.trainer import (
     TrainingArguments,
 )
 
-from paddlenlp.transformers import AutoModel, AutoTokenizer, export_model, UIE
-from paddle import nn, set_device, cast, optimizer, squeeze
+from paddlenlp.transformers import export_model
+from paddle import set_device, optimizer
 from paddle.static import InputSpec
 from base_logger import generate_logger
 from config import BaseConfig
 from typing import Optional, List, Any, Callable, Dict, Union, Tuple
-from training_callbacks import *
+from callbacks import *
 from functools import partial
 from paddlenlp.datasets import load_dataset
-from datetime import datetime
-import paddle
 import os
-from paddlenlp.metrics import SpanEvaluator
-from paddlenlp.trainer.trainer_utils import EvalPrediction
 
 
 logger = generate_logger(name=__name__)
 ML_FLOW = True  # Add MLflow for experiment # TODO change mlflow to False
-
-
-def scale_model_output(model):
-    pass
 
 
 # main function
@@ -48,6 +34,7 @@ def finetune(
         Callable[[Dict[str, str], Any, int], Dict[str, Union[str, float]]]
     ] = convert_to_uie_format,
     criterion=uie_loss_func,
+    compute_metrics=SpanEvaluator_metrics,
     optimizers: Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler] = (None, None),
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
@@ -80,30 +67,7 @@ def finetune(
         load_dataset(read_finetune_data, data_path=data, max_seq_len=512, lazy=False) for data in (train_path, dev_path)
     )
 
-    # from pretrained tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
-
-    # from pretrained model
-    # TODO testing other model
-    # model = AutoModel.from_pretrained(model_name_or_path)
-
-    model = model_scaler(model_name_or_path=model_name_or_path)
-    # model = model_scaler(in_features=768, out_features=1)
-
-    # model.add_sublayer("linear_for_scale_dim", scaler)
-
-    # Callback Function
-    # TODO 增加AUC (取出機率最高的錢，然後看他跟真實資料的錢的差異)
-    def SpanEvaluator_metrics(result: EvalPrediction):
-        metric = SpanEvaluator()
-        start_prob, end_prob = result.predictions
-        start_ids, end_ids = result.label_ids
-        metric.reset()
-        num_correct, num_infer, num_label = metric.compute(start_prob, end_prob, start_ids, end_ids)
-        metric.update(num_correct, num_infer, num_label)
-        precision, recall, f1 = metric.accumulate()
-        metric.reset()
-        return {"precision": precision, "recall": recall, "f1": f1}
+    model, tokenizer = load_model_and_tokenizer(model_name_or_path)
 
     # TODO implement soft prompt
     """
@@ -128,7 +92,7 @@ def finetune(
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=dev_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
-        compute_metrics=SpanEvaluator_metrics,
+        compute_metrics=compute_metrics,
         optimizers=optimizers,
     )
     trainer.optimizers = (
@@ -190,9 +154,12 @@ def finetune(
                 InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
             ]
         if export_model_dir is None:
-            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir} as default.")
+            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir}export as default.")
             export_model_dir = os.path.join(training_args.output_dir)
-        export_model(model=trainer.model.model, input_spec=input_spec, path=export_model_dir)
+        try:
+            export_model(model=trainer.model, input_spec=input_spec, path=export_model_dir)
+        except Exception as e:
+            logger.error(f"Fail to export model. Error in export_model: {e.__class__.__name__}: {e}.")
 
 
 if __name__ == "__main__":
