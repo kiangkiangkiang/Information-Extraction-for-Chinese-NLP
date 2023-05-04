@@ -88,7 +88,6 @@ def finetune(
     # model = AutoModel.from_pretrained(model_name_or_path)
 
     model = model_scaler(model_name_or_path=model_name_or_path)
-
     # model = model_scaler(in_features=768, out_features=1)
 
     # model.add_sublayer("linear_for_scale_dim", scaler)
@@ -191,9 +190,9 @@ def finetune(
                 InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
             ]
         if export_model_dir is None:
-            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir}/export as default.")
+            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir} as default.")
             export_model_dir = os.path.join(training_args.output_dir)
-        export_model(model=trainer.model, path=export_model_dir)
+        export_model(model=trainer.model.model, input_spec=input_spec, path=export_model_dir)
 
 
 if __name__ == "__main__":
@@ -203,7 +202,6 @@ if __name__ == "__main__":
 
     training_args.print_config(model_args, "Model")
     training_args.print_config(data_args, "Data")
-    training_args.print_config(training_args, "Data")
 
     if base_config.root_dir:
         if data_args.train_path is None and training_args.do_train:

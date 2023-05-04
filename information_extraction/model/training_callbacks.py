@@ -1,8 +1,9 @@
-from paddle import nn, squeeze, load, cast, Tensor
 import os
 import sys
-from paddlenlp.transformers import AutoModel
 from typing import Optional
+
+from paddle import Tensor, cast, load, nn, squeeze
+from paddlenlp.transformers import AutoModel, PretrainedModel
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -16,7 +17,6 @@ logger = generate_logger(__name__)
 def uie_loss_func(outputs, labels) -> float:
     # TODO MLFLOW
     loss_func = nn.BCELoss()
-    logger.debug(f"In uie_loss_func, log type(outputs): {type(outputs)}, type(labels): {type(labels)}")
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
@@ -28,12 +28,13 @@ def uie_loss_func(outputs, labels) -> float:
     return loss
 
 
-class model_scaler(nn.Layer):
-    def __init__(self, model_name_or_path=None, name_scope=None, dtype="float32", in_features=768, out_features=1):
-        super().__init__(name_scope, dtype)
+class model_scaler(PretrainedModel):
+    def __init__(self, model_name_or_path=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.model = AutoModel.from_pretrained(model_name_or_path)
-        self.linear_start = nn.Linear(in_features, out_features)
-        self.linear_end = nn.Linear(in_features, out_features)
+        self.config = self.model.config
+        self.linear_start = nn.Linear(self.config.hidden_size, 1)
+        self.linear_end = nn.Linear(self.config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
         self._load_linear_param()
 
