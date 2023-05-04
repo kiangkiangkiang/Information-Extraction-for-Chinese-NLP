@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import Optional, List, Any, Dict, Union, Tuple
 from paddlenlp.trainer import TrainingArguments
 
@@ -9,10 +9,12 @@ current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from config import generate_logger
+from base_logger import generate_logger
 from utils.exceptions import DataError, PreprocessingError
+from config import BaseConfig
 
 logger = generate_logger(name=__name__)
+base_config = BaseConfig()
 
 
 @dataclass
@@ -62,10 +64,15 @@ class ModelArguments:
 # information extraction (IE) training arguments
 @dataclass
 class IETrainingArguments(TrainingArguments):
-    output_dir: str = field(
-        default="./",
-        metadata={"help": "The output directory where the model predictions and checkpoints will be written."},
-    )
+    output_dir: str = field(default=None, metadata={"help": "The path where the checkpoint of the model is saved."})
+
+    def __post_init__(self):
+        if base_config.root_dir and self.output_dir is None:
+            self.output_dir = base_config.root_dir + base_config.train_result_path
+        return super().__post_init__()
+
+    def dict(self):
+        return {k: str(v) for k, v in asdict(self).items()}
 
 
 def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]:

@@ -5,19 +5,36 @@ from preprocessing import (
     read_finetune_data,
     convert_to_uie_format,
 )
-from paddlenlp.trainer import PdArgumentParser, get_last_checkpoint
-from paddlenlp.transformers import AutoModel, AutoTokenizer, export_model
+from paddlenlp.trainer import (
+    PdArgumentParser,
+    get_last_checkpoint,
+    Trainer,
+    TrainingArguments,
+)
 
-from paddle import set_device
-from config import generate_logger, BaseConfig
-from typing import Optional, List, Any, Callable, Dict, Union
+from paddlenlp.transformers import AutoModel, AutoTokenizer, export_model, UIE
+from paddle import nn, set_device, cast, optimizer, squeeze
+from paddle.static import InputSpec
+from base_logger import generate_logger
+from config import BaseConfig
+from typing import Optional, List, Any, Callable, Dict, Union, Tuple
+from training_callbacks import *
 from functools import partial
 from paddlenlp.datasets import load_dataset
+from datetime import datetime
+import paddle
 import os
+from paddlenlp.metrics import SpanEvaluator
+from paddlenlp.trainer.trainer_utils import EvalPrediction
 
 
 logger = generate_logger(name=__name__)
 ML_FLOW = True  # Add MLflow for experiment # TODO change mlflow to False
+
+
+def scale_model_output(model):
+    pass
+
 
 # main function
 def finetune(
@@ -26,11 +43,13 @@ def finetune(
     max_seq_len: int = 512,
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
+    multilingual: Optional[bool] = False,
     convert_and_tokenize_function: Optional[
         Callable[[Dict[str, str], Any, int], Dict[str, Union[str, float]]]
     ] = convert_to_uie_format,
-    multilingual: Optional[bool] = False,
-    **kwargs: Any,
+    criterion=uie_loss_func,
+    optimizers: Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler] = (None, None),
+    training_args: Optional[TrainingArguments] = None,
 ) -> None:
 
     # Check arguments Legal or not
@@ -38,13 +57,13 @@ def finetune(
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
 
     if not os.path.exists(dev_path):
-        if kwargs.do_eval == True:
+        if training_args.do_eval == True:
             logger.warning(
                 f"Evaluation data not found in {dev_path}. \
                 Please input the correct path of evaluation data.\
                     Auto-training without evaluation data..."
             )
-        kwargs.do_eval = False
+        training_args.do_eval = False
 
     if model_name_or_path in ["uie-m-base", "uie-m-large"]:
         multilingual = True
@@ -61,27 +80,31 @@ def finetune(
         load_dataset(read_finetune_data, data_path=data, max_seq_len=512, lazy=False) for data in (train_path, dev_path)
     )
 
-    # Detecting last checkpoint.
-    last_checkpoint = None
-    if os.path.isdir(kwargs.output_dir) and kwargs.do_train and not kwargs.overwrite_output_dir:
-        last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
-            raise ValueError(
-                f"Output directory ({training_args.output_dir}) already exists and is not empty. "
-                "Use --overwrite_output_dir to overcome."
-            )
-        elif last_checkpoint is not None and kwargs.resume_from_checkpoint is None:
-            logger.info(
-                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
-                "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
-            )
-
     # from pretrained tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     # TODO testing other model
-    model = AutoModel.from_pretrained(model_name_or_path)
+    # model = AutoModel.from_pretrained(model_name_or_path)
+
+    model = model_scaler(model_name_or_path=model_name_or_path)
+
+    # model = model_scaler(in_features=768, out_features=1)
+
+    # model.add_sublayer("linear_for_scale_dim", scaler)
+
+    # Callback Function
+    # TODO 增加AUC (取出機率最高的錢，然後看他跟真實資料的錢的差異)
+    def SpanEvaluator_metrics(result: EvalPrediction):
+        metric = SpanEvaluator()
+        start_prob, end_prob = result.predictions
+        start_ids, end_ids = result.label_ids
+        metric.reset()
+        num_correct, num_infer, num_label = metric.compute(start_prob, end_prob, start_ids, end_ids)
+        metric.update(num_correct, num_infer, num_label)
+        precision, recall, f1 = metric.accumulate()
+        metric.reset()
+        return {"precision": precision, "recall": recall, "f1": f1}
 
     # TODO implement soft prompt
     """
@@ -89,32 +112,98 @@ def finetune(
             model = only_open_wordembeddings_layers_for_soft_prompt_train(model)
     """
 
-    # TODO Tokenization and Convert the data into a dataset that aligns with the format of prompt learning input..
+    # Tokenization and Convert the data into a dataset that aligns with the format of prompt learning input..
     convert_function = partial(
         convert_and_tokenize_function,
         tokenizer=tokenizer,
         max_seq_len=max_seq_len,
         multilingual=multilingual,
     )
-
     train_dataset, dev_dataset = (data.map(convert_function) for data in (train_dataset, dev_dataset))
 
-    # TODO loss function
+    # TODO Trainer
+    trainer = Trainer(
+        model=model,
+        criterion=criterion,
+        args=training_args,
+        train_dataset=train_dataset if training_args.do_train else None,
+        eval_dataset=dev_dataset if training_args.do_eval else None,
+        tokenizer=tokenizer,
+        compute_metrics=SpanEvaluator_metrics,
+        optimizers=optimizers,
+    )
+    trainer.optimizers = (
+        optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())
+        if optimizers[0] is None
+        else optimizers[0]
+    )
 
-    # TODO metrices
+    # Detecting last checkpoint.
+    checkpoint, last_checkpoint = None, None
+    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
+        last_checkpoint = get_last_checkpoint(training_args.output_dir)
+        if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
+            raise ValueError(
+                f"Output directory ({training_args.output_dir}) already exists and is not empty. "
+                "Use --overwrite_output_dir to overcome."
+            )
+        elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
+            logger.info(
+                f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
+                "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
+            )
+    if training_args.resume_from_checkpoint is not None:
+        checkpoint = training_args.resume_from_checkpoint
+    elif last_checkpoint is not None:
+        checkpoint = last_checkpoint
 
-    # TODO add log and mlflow in metrics
+    logger.debug(f"chechpoint: {checkpoint}")
+    logger.debug(f"last_checkpoint: {last_checkpoint}")
 
-    # TODO optimizer optional (do not fix)
+    # Training
+    if training_args.do_train:
+        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        metrics = train_result.metrics
+        trainer.save_model()
+        trainer.log_metrics("train", metrics)
+        trainer.save_metrics("train", metrics)
+        trainer.save_state()
+
+    # Evaluate and tests model
+    if training_args.do_eval:
+        eval_metrics = trainer.evaluate()
+        trainer.log_metrics("eval", eval_metrics)
+
+    # export inference model
+    if training_args.do_export:
+        # You can also load from certain checkpoint
+        # trainer.load_state_dict_from_checkpoint("/path/to/checkpoint/")
+        if multilingual:
+            input_spec = [
+                InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+                InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
+            ]
+        else:
+            input_spec = [
+                InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+                InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
+                InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
+                InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
+            ]
+        if export_model_dir is None:
+            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir}/export as default.")
+            export_model_dir = os.path.join(training_args.output_dir)
+        export_model(model=trainer.model, path=export_model_dir)
 
 
 if __name__ == "__main__":
+    base_config = BaseConfig()
     parser = PdArgumentParser((ModelArguments, DataArguments, IETrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    base_config = BaseConfig()
 
     training_args.print_config(model_args, "Model")
-    training_args.print_config(model_args, "Data")
+    training_args.print_config(data_args, "Data")
+    training_args.print_config(training_args, "Data")
 
     if base_config.root_dir:
         if data_args.train_path is None and training_args.do_train:
@@ -135,5 +224,5 @@ if __name__ == "__main__":
         model_name_or_path=model_args.model_name_or_path,
         export_model_dir=model_args.export_model_dir,
         multilingual=model_args.multilingual,
-        kwargs=training_args,
+        training_args=training_args,
     )

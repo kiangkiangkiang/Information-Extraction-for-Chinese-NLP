@@ -21,6 +21,11 @@ class BaseConfig:
         metadata={"help": "The train/dev/test data path (splitted from deccano) after root directory."},
     )
 
+    train_result_path: str = field(
+        default="/information_extraction/results/checkpoint/",
+        metadata={"help": "The train/dev/test data path (splitted from deccano) after root directory."},
+    )
+
     root_dir_name: str = field(
         default="Chinese-Verdict-NLP", metadata={"help": "The root directory name of this project."}
     )
