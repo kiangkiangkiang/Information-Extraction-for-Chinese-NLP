@@ -18,3 +18,5 @@ more_data
 
 
 test first build
+
+test sce com
