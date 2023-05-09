@@ -9,11 +9,10 @@ current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from base_logger import generate_logger
+from paddlenlp.utils.log import logger
 from utils.exceptions import DataError, PreprocessingError
 from config import BaseConfig
 
-logger = generate_logger(name=__name__)
 base_config = BaseConfig()
 
 

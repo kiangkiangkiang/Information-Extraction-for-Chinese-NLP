@@ -9,7 +9,7 @@ from paddlenlp.trainer import (
 from paddlenlp.transformers import export_model
 from paddle import set_device, optimizer
 from paddle.static import InputSpec
-from base_logger import generate_logger
+from paddlenlp.utils.log import logger
 from config import BaseConfig
 from typing import Optional, List, Any, Callable, Dict, Union, Tuple
 from callbacks import *
@@ -18,7 +18,6 @@ from paddlenlp.datasets import load_dataset
 import os
 
 
-logger = generate_logger(name=__name__)
 ML_FLOW = True  # Add MLflow for experiment # TODO change mlflow to False
 
 

@@ -11,9 +11,8 @@ current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.append(parent)
 
-from base_logger import generate_logger
+from paddlenlp.utils.log import logger
 
-logger = generate_logger(__name__)
 
 # Loss function
 def uie_loss_func(outputs, labels) -> float:

@@ -1,10 +1,8 @@
-from base_logger import generate_logger
+from paddlenlp.utils.log import logger
 from typing import List
 from dataclasses import dataclass, field
 import os
 
-
-logger = generate_logger(name=__name__)
 
 # default config in this project
 @dataclass()
@@ -58,5 +56,5 @@ class BaseConfig:
             else:
                 return now_folder
 
-        logger.error("Fail to get root directory.")
+        logger.error(f"In {__name__}: Fail to get root directory.")
         return None

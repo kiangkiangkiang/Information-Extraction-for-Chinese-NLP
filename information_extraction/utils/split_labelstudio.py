@@ -1,14 +1,11 @@
 from base_utils import set_seed, shuffle_data
 from config import BaseConfig
-from base_logger import generate_logger
+from paddlenlp.utils.log import logger
 from typing import List, Tuple
 import json
 import os
 from decimal import Decimal
 import argparse
-
-
-logger = generate_logger(name=__name__)
 
 
 def add_negative_samples():
