@@ -18,7 +18,14 @@ from paddlenlp.datasets import load_dataset
 import os
 
 
-ML_FLOW = True  # Add MLflow for experiment # TODO change mlflow to False
+# Add MLflow for experiment # TODO change mlflow to False
+MLFLOW = True
+if MLFLOW:
+    from setup_mlflow import ML_Flow_Handler
+
+    mlflow_handler = ML_Flow_Handler()
+    uie_loss_func = mlflow_handler.loss_func
+    logger.debug("Success to set up mlflow.")
 
 
 # main function
@@ -34,7 +41,7 @@ def finetune(
     ] = convert_to_uie_format,
     criterion=uie_loss_func,
     compute_metrics=SpanEvaluator_metrics,
-    optimizers: Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler] = (None, None),
+    optimizers: Optional[Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler]] = (None, None),
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
 
@@ -81,9 +88,10 @@ def finetune(
         max_seq_len=max_seq_len,
         multilingual=multilingual,
     )
+
+    # TODO solve none dev_dataset
     train_dataset, dev_dataset = (data.map(convert_function) for data in (train_dataset, dev_dataset))
 
-    # TODO Trainer
     trainer = Trainer(
         model=model,
         criterion=criterion,
@@ -124,7 +132,23 @@ def finetune(
 
     # Training
     if training_args.do_train:
-        train_result = trainer.train(resume_from_checkpoint=checkpoint)
+        if MLFLOW:
+
+            train_result = mlflow_handler.mlflow_train(
+                trainer,
+                checkpoint,
+                log_parms_dict=dict(
+                    model_name_or_path=model_name_or_path,
+                    batch_size_train=training_args.per_device_train_batch_size,
+                    learning_rate=training_args.learning_rate,
+                    n_epoch=training_args.num_train_epochs,
+                    optimizer=trainer.optimizers,
+                    train_data_len=len(train_dataset),
+                ),
+            )
+
+        else:
+            train_result = trainer.train(resume_from_checkpoint=checkpoint)
         metrics = train_result.metrics
         trainer.save_model()
         trainer.log_metrics("train", metrics)
@@ -165,7 +189,6 @@ if __name__ == "__main__":
     base_config = BaseConfig()
     parser = PdArgumentParser((ModelArguments, DataArguments, IETrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-
     training_args.print_config(model_args, "Model")
     training_args.print_config(data_args, "Data")
 

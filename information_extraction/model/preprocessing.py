@@ -70,9 +70,6 @@ class IETrainingArguments(TrainingArguments):
             self.output_dir = base_config.root_dir + base_config.train_result_path
         return super().__post_init__()
 
-    def dict(self):
-        return {k: str(v) for k, v in asdict(self).items()}
-
 
 def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]:
     """

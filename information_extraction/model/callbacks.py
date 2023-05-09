@@ -14,9 +14,7 @@ sys.path.append(parent)
 from paddlenlp.utils.log import logger
 
 
-# Loss function
 def uie_loss_func(outputs, labels) -> float:
-    # TODO MLFLOW
     loss_func = nn.BCELoss()
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
