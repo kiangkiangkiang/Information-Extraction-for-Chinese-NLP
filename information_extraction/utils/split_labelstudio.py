@@ -1,4 +1,4 @@
-from base_utils import set_seed, shuffle_data
+from base_utils import *
 from config import BaseConfig
 from paddlenlp.utils.log import logger
 from typing import List, Tuple
@@ -12,46 +12,6 @@ def add_negative_samples():
     # TODO add negative when result == []
     # duplicate?
     pass
-
-
-def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
-    """轉換格式邏輯程式，將label studio output轉換成UIE模型所吃的格式。
-
-    Args:
-        dataset (List[dict]): label studio output的json檔。
-        is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
-
-    Raises:
-        ValueError: 任務格式錯誤（此邏輯程式只處理NER任務，有Relation標籤無法處理）。
-
-    Returns:
-        List[dict]: 模型所吃的訓練格式。
-    """
-
-    logger.debug(f"In convert_format, data len = {len(dataset)}")
-    results = []
-    for data in dataset:
-        uie_format = {
-            output_type: {"content": data["data"]["text"], "result_list": [], "prompt": output_type}
-            for output_type in base_config.ner_type
-        }
-        for label_result in data["annotations"][0]["result"]:
-            if label_result["type"] != "labels":
-                raise ValueError(
-                    "Now we only deal with NER tasks, \
-                        which means the type of label studio result is 'labels'."
-                )
-
-            uie_format[label_result["value"]["labels"][0]]["result_list"].append(
-                {
-                    "text": label_result["value"]["text"],
-                    "start": label_result["value"]["start"],
-                    "end": label_result["value"]["end"],
-                }
-            )
-        # add_negative_samples(uie_format)# if result == []
-        results.extend(uie_format.values())
-    return shuffle_data(results) if is_shuffle else results
 
 
 def do_split(
