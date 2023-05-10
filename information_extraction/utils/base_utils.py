@@ -234,7 +234,9 @@ def regularize_json_file(
     logger.info(f"End regularize all data.")
 
 
+"""
 regularize_json_file(
     "/Users/cfh00892302/Desktop/myWorkspace/Chinese-Verdict-NLP/dev/label_output_new/merged_data.json",
     "/Users/cfh00892302/Desktop/myWorkspace/Chinese-Verdict-NLP/dev/label_output_new",
 )
+"""

@@ -107,6 +107,7 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                 current_content_result = []
 
                 # pop result in subcontent
+                print(result_list)
                 while len(result_list) > 0:
                     if (
                         result_list[0]["start"] > result_list[0]["end"]
@@ -120,26 +121,35 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                     if result_list[0]["start"] < max_content_len:
                         if result_list[0]["end"] > max_content_len:
                             # Result-Cross case: using dynamic adjust max_content_len to escape the problem.
-                            logger.debug(
-                                f"Result-Cross: content: {json_line['content']}, prompt: {prompt}, result_list: {json_line['result_list']}.\n\
-                                Result-Cross in {result_list[0]}."
-                            )
+                            logger.debug(f"Result-Cross. result: {result_list[0]}, content:{content}")
                             max_content_len = result_list[0]["start"]
                             result_list[0]["start"] -= max_content_len
                             result_list[0]["end"] -= max_content_len
                             break
                         else:
                             current_content_result.append(result_list.pop(0))
+                            if result_list:
+                                result_list[0]["start"] -= accumulate_token
+                                result_list[0]["end"] -= accumulate_token
                     else:
                         result_list[0]["start"] -= max_content_len
                         result_list[0]["end"] -= max_content_len
                         break  # result list is sorted by start
 
-                yield {
+                # TODO test work
+                truncate_result = {
                     "content": content[:max_content_len],
                     "result_list": current_content_result,
                     "prompt": prompt,
                 }
+
+                for each_result in truncate_result["result_list"]:
+                    adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
+                    true_data = each_result["text"]
+                    if adjust_data != true_data:
+                        raise PreprocessingError("adjuse error.")
+
+                yield truncate_result
 
                 content = content[max_content_len:]
                 accumulate_token += max_content_len
@@ -189,7 +199,8 @@ def align_to_offset_mapping(origin_index: int, offset_mapping: List[List[int]]) 
         if span[0] <= origin_index < span[1]:
             return index
 
-    raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
+    # raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
+    return -1
 
 
 def convert_to_uie_format(
@@ -238,6 +249,9 @@ def convert_to_uie_format(
     for item in data["result_list"]:
         aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
         aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
+        if aligned_start_index == -1 or aligned_end_index == -1:
+            print(123)
+            breakpoint()
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
 
@@ -258,3 +272,14 @@ def convert_to_uie_format(
             "end_positions": end_ids,
         }
     )
+
+
+"""
+test = read_finetune_data("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
+s = next(test);s
+s
+s["content"][431:437]
+
+len(s["content"])
+s["content"][431:437]
+"""

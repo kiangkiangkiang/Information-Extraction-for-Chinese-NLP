@@ -19,7 +19,7 @@ import os
 
 
 # Add MLflow for experiment # TODO change mlflow to False
-MLFLOW = True
+MLFLOW = False
 if MLFLOW:
     from setup_mlflow import ML_Flow_Handler
 
