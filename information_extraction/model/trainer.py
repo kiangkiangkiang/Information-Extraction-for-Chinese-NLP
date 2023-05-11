@@ -21,9 +21,6 @@ from paddle import nn
 
 import paddle
 from typing import Union, Optional, Callable, Dict, Tuple, List
-from ..config import BaseConfig
-
-base_config = BaseConfig()
 
 
 class IEEvalPrediction(EvalPrediction):
@@ -148,7 +145,13 @@ class IETrainer(Trainer):
         observed_num_examples = 0
         # Main evaluation loop
         losses = []
+        # Modification
+        ner_type = []
         for step, inputs in enumerate(dataloader):
+            # Modification
+            # inputs['input_ids']
+            breakpoint()
+            # ner_type = inputs
             # Update the observed num examples
             observed_batch_size = find_batch_size(inputs)
             if observed_batch_size is not None:

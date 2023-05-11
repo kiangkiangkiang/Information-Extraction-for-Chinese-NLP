@@ -37,12 +37,14 @@ class ML_Flow_Handler(object):
 
         # setup by environment
         sys.path.append(self.ENVIRONMENT_VARIABLE_SETUP_PATH)
+        """
         try:
             from setup_mlflow_envir import setup_env
 
             self.setup_env = setup_env
         except Exception as e:
             raise ValueError(f"Cannot setup mlflow. {e.__class__.__name__}: {e}.")
+        """
 
     def __generate_exp_id(self) -> str:
         if self.exp_id:
