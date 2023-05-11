@@ -3,10 +3,10 @@ from preprocessing import *
 from paddlenlp.trainer import (
     PdArgumentParser,
     get_last_checkpoint,
-    Trainer,
     TrainingArguments,
 )
 
+from trainer import IETrainer
 from paddlenlp.transformers import export_model
 from paddle import set_device, optimizer
 from paddle.static import InputSpec
@@ -20,7 +20,9 @@ import os
 
 # Add MLflow for experiment # TODO change mlflow to False
 MLFLOW = True
-
+os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
+os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
+os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
 # main function
 def finetune(
     train_path: str,
@@ -85,7 +87,7 @@ def finetune(
     # TODO solve none dev_dataset
     train_dataset, dev_dataset = (data.map(convert_function) for data in (train_dataset, dev_dataset))
 
-    trainer = Trainer(
+    trainer = IETrainer(
         model=model,
         criterion=criterion,
         args=training_args,
