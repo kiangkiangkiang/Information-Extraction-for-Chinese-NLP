@@ -1,4 +1,5 @@
 from preprocessing import *
+
 from paddlenlp.trainer import (
     PdArgumentParser,
     get_last_checkpoint,
@@ -17,16 +18,8 @@ from functools import partial
 from paddlenlp.datasets import load_dataset
 import os
 
-
 # Add MLflow for experiment # TODO change mlflow to False
-MLFLOW = False
-if MLFLOW:
-    from setup_mlflow import ML_Flow_Handler
-
-    mlflow_handler = ML_Flow_Handler()
-    uie_loss_func = mlflow_handler.loss_func
-    logger.debug("Success to set up mlflow.")
-
+MLFLOW = True
 
 # main function
 def finetune(
@@ -204,6 +197,13 @@ if __name__ == "__main__":
                 f"Missing 'dev_path' argument. " + "Automatically use {data_args.dev_path} as evaluation data."
             )
 
+    if MLFLOW:
+        from setup_mlflow import ML_Flow_Handler
+
+        mlflow_handler = ML_Flow_Handler()
+        mlflow_handler.setup_env()
+        logger.debug("Success to set up mlflow.")
+
     finetune(
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
@@ -212,4 +212,5 @@ if __name__ == "__main__":
         export_model_dir=model_args.export_model_dir,
         multilingual=model_args.multilingual,
         training_args=training_args,
+        criterion=mlflow_handler.loss_func if MLFLOW else uie_loss_func,
     )

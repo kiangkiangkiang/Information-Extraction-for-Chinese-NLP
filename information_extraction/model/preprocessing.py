@@ -147,7 +147,7 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                     adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
                     true_data = each_result["text"]
                     if adjust_data != true_data:
-                        raise PreprocessingError("adjuse error.")
+                        raise PreprocessingError(f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}.")
 
                 yield truncate_result
 

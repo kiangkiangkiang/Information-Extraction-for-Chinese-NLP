@@ -1,1 +1,3 @@
 information_extraction/results
+information_extraction/model/mlruns
+dev/mlruns
