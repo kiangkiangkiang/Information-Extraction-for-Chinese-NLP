@@ -1,5 +1,7 @@
 # TODO override evaluation loop
+from preprocessing import get_base_config
 import numpy as np
+import pandas as pd
 from paddlenlp.trainer import Trainer
 from paddlenlp.transformers.model_utils import PretrainedModel
 from paddle.io import Dataset, DataLoader
@@ -22,9 +24,11 @@ from paddle import nn
 import paddle
 from typing import Union, Optional, Callable, Dict, Tuple, List
 
+base_config = get_base_config()
+
 
 class IEEvalPrediction(EvalPrediction):
-    ner_type: str = None
+    ner_type: List[str] = None
 
 
 class IETrainer(Trainer):
@@ -76,6 +80,14 @@ class IETrainer(Trainer):
 
         Works both with or without labels.
         """
+
+        # Modification
+        # min_word 為用來判斷group的最小字元，例如min_word=4，代表用每個ner_type的前四個字來區隔其他的type
+        min_word = np.min([len(i) for i in base_config.ner_type])
+        ner_type = [i[:min_word] for i in base_config.ner_type]
+        if len(pd.unique(ner_type)) != len(base_config.ner_type):
+            raise ValueError(f"The first word in ner_type is repeat. Please adjust it.")
+
         args = self.args
 
         prediction_loss_only = prediction_loss_only if prediction_loss_only is not None else args.prediction_loss_only
@@ -146,12 +158,21 @@ class IETrainer(Trainer):
         # Main evaluation loop
         losses = []
         # Modification
-        ner_type = []
+        eval_group = []
         for step, inputs in enumerate(dataloader):
             # Modification
-            # inputs['input_ids']
-            breakpoint()
-            # ner_type = inputs
+            group = self.tokenizer.convert_ids_to_tokens(np.array(inputs["input_ids"][:, 1 : (min_word + 1)]).flatten())
+            group = [
+                "".join(group)[start:end]
+                for start, end in zip(
+                    range(0, len(group), min_word),
+                    range(min_word, len(group) + min_word, min_word),
+                )
+            ]
+
+            # breakpoint()
+            eval_group.extend(group)
+
             # Update the observed num examples
             observed_batch_size = find_batch_size(inputs)
             if observed_batch_size is not None:
@@ -181,6 +202,10 @@ class IETrainer(Trainer):
             self.control = self.callback_handler.on_prediction_step(args, self.state, self.control)
             if max_eval_iters > 0 and step >= max_eval_iters - 1:
                 break
+
+        # Modification
+        logger.debug(f"eval_group = {eval_group}")
+
         # Gather all remaining tensors and put them back on the CPU
         if losses_host is not None:
             losses = nested_numpify(losses_host)
@@ -217,13 +242,13 @@ class IETrainer(Trainer):
             all_labels = nested_truncate(all_labels, num_samples)
 
         model.train()
-        # Modification
-        breakpoint()
 
         # Metrics!
         if self.compute_metrics is not None and all_preds is not None and all_labels is not None:
             # Modification
-            metrics = self.compute_metrics(IEEvalPrediction(predictions=all_preds, label_ids=all_labels))
+            metrics = self.compute_metrics(
+                IEEvalPrediction(predictions=all_preds, label_ids=all_labels, ner_type=eval_group)
+            )
         else:
             metrics = {}
 

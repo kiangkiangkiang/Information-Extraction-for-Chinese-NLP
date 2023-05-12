@@ -107,7 +107,6 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                 current_content_result = []
 
                 # pop result in subcontent
-                print(result_list)
                 while len(result_list) > 0:
                     if (
                         result_list[0]["start"] > result_list[0]["end"]
@@ -199,8 +198,8 @@ def align_to_offset_mapping(origin_index: int, offset_mapping: List[List[int]]) 
         if span[0] <= origin_index < span[1]:
             return index
 
-    # raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
-    return -1
+    raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
+    # return -1
 
 
 def convert_to_uie_format(
@@ -249,9 +248,6 @@ def convert_to_uie_format(
     for item in data["result_list"]:
         aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
         aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
-        if aligned_start_index == -1 or aligned_end_index == -1:
-            print(123)
-            breakpoint()
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
 
@@ -272,6 +268,10 @@ def convert_to_uie_format(
             "end_positions": end_ids,
         }
     )
+
+
+def get_base_config():
+    return base_config
 
 
 """

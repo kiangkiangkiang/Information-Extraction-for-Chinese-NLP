@@ -28,7 +28,8 @@ def uie_loss_func(outputs, labels) -> float:
 
 # metrics calculator
 # TODO 增加AUC (取出機率最高的錢，然後看他跟真實資料的錢的差異)
-def SpanEvaluator_metrics(result: EvalPrediction):
+def SpanEvaluator_metrics(result):
+    breakpoint()
     metric = SpanEvaluator()
     start_prob, end_prob = result.predictions
     start_ids, end_ids = result.label_ids

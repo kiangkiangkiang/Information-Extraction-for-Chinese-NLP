@@ -33,9 +33,9 @@ class BaseConfig:
     finding_limits_of_root: int = field(default=10, metadata={"help": "找根目錄的上限次數. Defaults to 10."})
 
     def __post_init__(self):
-        self.root_dir = self._get_root_dir()
+        self.root_dir = self.__get_root_dir()
 
-    def _get_root_dir(self) -> str:
+    def __get_root_dir(self) -> str:
         """
         找到根目錄root_dir_name的完整路徑
 

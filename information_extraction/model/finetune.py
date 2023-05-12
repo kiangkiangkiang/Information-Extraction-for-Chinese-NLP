@@ -185,7 +185,7 @@ def finetune(
 
 
 if __name__ == "__main__":
-    base_config = BaseConfig()
+    base_config = get_base_config()
     parser = PdArgumentParser((ModelArguments, DataArguments, IETrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     training_args.print_config(model_args, "Model")
