@@ -15,7 +15,8 @@ sys.path.append(parent)
 from paddlenlp.utils.log import logger
 
 
-def uie_loss_func(outputs, labels) -> float:
+def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
+    # TODO add lambda for each group
     loss_func = nn.BCELoss()
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
@@ -28,7 +29,6 @@ def uie_loss_func(outputs, labels) -> float:
 
 
 # metrics calculator
-# TODO 增加AUC (取出機率最高的錢，然後看他跟真實資料的錢的差異)
 def SpanEvaluator_metrics(result):
     metric = SpanEvaluator()
 
@@ -42,7 +42,7 @@ def SpanEvaluator_metrics(result):
         metric.reset()
         return {descriptions + "precision": precision, descriptions + "recall": recall, descriptions + "f1": f1}
 
-    if result.eval_by_group:
+    if result.__class__.__name__ == "IEEvalPrediction":
         ner_type = pd.unique(result.eval_group)
         num_type = len(ner_type)
         if num_type < 1:

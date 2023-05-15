@@ -1,4 +1,3 @@
-# TODO override evaluation loop
 from preprocessing import get_base_config
 import numpy as np
 import pandas as pd
@@ -32,7 +31,6 @@ class IEEvalPrediction(NamedTuple):
     predictions: Union[np.ndarray, Tuple[np.ndarray]]
     label_ids: Union[np.ndarray, Tuple[np.ndarray]]
     eval_group: Union[np.ndarray, Tuple[np.ndarray]]
-    eval_by_group: bool = True
 
 
 class IETrainer(Trainer):
@@ -40,6 +38,8 @@ class IETrainer(Trainer):
 
     Args:
         Trainer (_type_): _description_
+        do_experiment: 實驗階段會override父類別的方法，以監控更多指標，因此當do_experiment=True時，會使用override方法，
+        當do_experiment=False時，會直接套用父類別的方法。
     """
 
     def __init__(
@@ -55,7 +55,13 @@ class IETrainer(Trainer):
         callbacks: Optional[List[TrainerCallback]] = None,
         optimizers: Tuple[paddle.optimizer.Optimizer, paddle.optimizer.lr.LRScheduler] = ...,
         preprocess_logits_for_metrics: Callable[[paddle.Tensor, paddle.Tensor], paddle.Tensor] = None,
+        do_experiment: bool = True,
+        mlflow_training_step: int = 0,
+        mlflow_eval_step: int = 0,
     ):
+        self.do_experiment = do_experiment
+        self.mlflow_training_step = mlflow_training_step
+        self.mlflow_eval_step = mlflow_eval_step
         super().__init__(
             model,
             criterion,
@@ -70,6 +76,56 @@ class IETrainer(Trainer):
             preprocess_logits_for_metrics,
         )
 
+    def compute_loss(self, model, inputs, return_outputs=False):
+        """
+        How the loss is computed by Trainer. By default, all models return the loss in the first element.
+        Subclass and override for custom behavior.
+        """
+
+        if self.criterion is not None:
+            if "labels" in inputs:
+                labels = inputs.pop("labels")
+            elif "start_positions" in inputs and "end_positions" in inputs:
+                labels = (inputs.pop("start_positions"), inputs.pop("end_positions"))
+            elif self.args.label_names is not None:
+                labels = []
+                for label in self.label_names:
+                    labels.append(inputs.pop(label))
+                labels = tuple(labels)
+            elif "generator_labels" in inputs:
+                labels = inputs["generator_labels"]
+        else:
+            labels = None
+
+        outputs = model(**inputs)
+
+        min_word = self.__get_min_word_in_ner_type()
+        group = self.__get_eval_group(min_word, inputs)
+
+        if self.criterion is not None:
+            # Modification
+            if model.training:
+                loss = self.criterion(
+                    outputs, labels, group, mlflow_key="Training loss", mlflow_step=self.mlflow_training_step
+                )
+                self.mlflow_training_step += self.mlflow_training_step
+            else:
+                loss = self.criterion(
+                    outputs, labels, group, mlflow_key="Evaluation loss", mlflow_step=self.mlflow_eval_step
+                )
+                self.mlflow_eval_step += 1
+
+            outputs = (loss, outputs)
+
+        # Save past state if it exists
+        if self.args.past_index >= 0:
+            self._past = outputs[self.args.past_index]
+
+        # We don't use .loss here since the model may return tuples instead of ModelOutput.
+        loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+
+        return (loss, outputs) if return_outputs else loss
+
     def evaluation_loop(
         self,
         dataloader: DataLoader,
@@ -80,17 +136,25 @@ class IETrainer(Trainer):
         max_eval_iters: Optional[int] = -1,
     ) -> EvalLoopOutput:
         """
+        Modification: 為了能看不同標籤類別的指標，這邊刻意override evaluation_loop，缺點是後續paddle更新時沒辦法同步，
+        因此若不需要實驗時，可以直接使用父類別的evaluation_loop。
         Prediction/evaluation loop, shared by `Trainer.evaluate()` and `Trainer.predict()`.
 
         Works both with or without labels.
         """
 
         # Modification
+        if not self.do_experiment:
+            return super().evaluation_loop(
+                dataloader=dataloader,
+                description=description,
+                prediction_loss_only=prediction_loss_only,
+                ignore_keys=ignore_keys,
+                metric_key_prefix=metric_key_prefix,
+                max_eval_iters=max_eval_iters,
+            )
         # min_word 為用來判斷group的最小字元，例如min_word=4，代表用每個ner_type的前四個字來區隔其他的type
-        min_word = np.min([len(i) for i in base_config.ner_type])
-        ner_type = [i[:min_word] for i in base_config.ner_type]
-        if len(pd.unique(ner_type)) != len(base_config.ner_type):
-            raise ValueError(f"The first word in ner_type is repeat. Please adjust it.")
+        min_word = self.__get_min_word_in_ner_type()
 
         args = self.args
 
@@ -165,14 +229,7 @@ class IETrainer(Trainer):
         eval_group = []
         for step, inputs in enumerate(dataloader):
             # Modification
-            group = self.tokenizer.convert_ids_to_tokens(np.array(inputs["input_ids"][:, 1 : (min_word + 1)]).flatten())
-            group = [
-                "".join(group)[start:end]
-                for start, end in zip(
-                    range(0, len(group), min_word),
-                    range(min_word, len(group) + min_word, min_word),
-                )
-            ]
+            group = self.__get_eval_group(min_word, inputs)
 
             # breakpoint()
             eval_group.extend(group)
@@ -206,9 +263,6 @@ class IETrainer(Trainer):
             self.control = self.callback_handler.on_prediction_step(args, self.state, self.control)
             if max_eval_iters > 0 and step >= max_eval_iters - 1:
                 break
-
-        # Modification
-        logger.debug(f"eval_group = {eval_group}")
 
         # Gather all remaining tensors and put them back on the CPU
         if losses_host is not None:
@@ -265,3 +319,21 @@ class IETrainer(Trainer):
                 metrics[f"{metric_key_prefix}_{key}"] = metrics.pop(key)
 
         return EvalLoopOutput(predictions=all_preds, label_ids=all_labels, metrics=metrics, num_samples=num_samples)
+
+    def __get_min_word_in_ner_type(self):
+        min_word = np.min([len(i) for i in base_config.ner_type])
+        ner_type = [i[:min_word] for i in base_config.ner_type]
+        if len(pd.unique(ner_type)) != len(base_config.ner_type):
+            raise ValueError(f"The first word in ner_type is repeat. Please adjust it.")
+        return min_word
+
+    def __get_eval_group(self, min_word, inputs):
+        group = self.tokenizer.convert_ids_to_tokens(np.array(inputs["input_ids"][:, 1 : (min_word + 1)]).flatten())
+        group = [
+            "".join(group)[start:end]
+            for start, end in zip(
+                range(0, len(group), min_word),
+                range(min_word, len(group) + min_word, min_word),
+            )
+        ]
+        return group

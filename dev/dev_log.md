@@ -20,3 +20,5 @@ more_data
 test first build
 
 test sce com
+
+MLFLOW目前埋在trainer和finetune裏面

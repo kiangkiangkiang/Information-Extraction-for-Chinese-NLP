@@ -18,14 +18,11 @@ from functools import partial
 from paddlenlp.datasets import load_dataset
 import os
 
-# Add MLflow for experiment # TODO change mlflow to False
+# Add MLflow for experiment # change mlflow to False
 MLFLOW = True
-
-
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
 os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
-
 
 # main function
 def finetune(
@@ -132,7 +129,6 @@ def finetune(
     # Training
     if training_args.do_train:
         if MLFLOW:
-
             train_result = mlflow_handler.mlflow_train(
                 trainer,
                 checkpoint,
@@ -156,7 +152,10 @@ def finetune(
 
     # Evaluate and tests model
     if training_args.do_eval:
-        eval_metrics = trainer.evaluate()
+        if MLFLOW:
+            eval_metrics = mlflow_handler.mlflow_evaluate(trainer)
+        else:
+            eval_metrics = trainer.evaluate()
         trainer.log_metrics("eval", eval_metrics)
 
     # export inference model
@@ -204,11 +203,10 @@ if __name__ == "__main__":
             )
 
     if MLFLOW:
-        from setup_mlflow import ML_Flow_Handler
+        from setup_mlflow import IE_MLFlowHandler
 
-        mlflow_handler = ML_Flow_Handler()
+        mlflow_handler = IE_MLFlowHandler()
         mlflow_handler.run_tags["os"] = sys.platform
-        mlflow_handler.setup_env()
         logger.debug("Success to set up mlflow.")
 
     finetune(
