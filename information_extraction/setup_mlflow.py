@@ -2,6 +2,8 @@ import mlflow
 import sys
 from paddlenlp.utils.log import logger
 from paddle import nn, cast
+import pandas as pd
+from paddlenlp.metrics import SpanEvaluator
 
 
 class ML_Flow_Handler(object):
@@ -80,8 +82,66 @@ class ML_Flow_Handler(object):
         loss = (loss_start + loss_end) / 2.0
         logger.debug("in mlflow loss")
         mlflow.log_metric(key="train loss", value=loss)
-        mlflow.log_metric(key="test 87 log", value=878787)
         return loss
+
+    def SpanEvaluator_metrics(self, result):
+        logger.debug("in mlflow metrics")
+        metric = SpanEvaluator()
+
+        def compute_metrics(predictions, label_ids, descriptions=""):
+
+            start_prob, end_prob = predictions
+            logger.debug(f"predictions shape: s:{start_prob.shape}, e:{end_prob.shape}")
+            start_ids, end_ids = label_ids
+            logger.debug(f"label_ids shape: s:{start_ids.shape}, e:{end_ids.shape}")
+            metric.reset()
+            num_correct, num_infer, num_label = metric.compute(start_prob, end_prob, start_ids, end_ids)
+            metric.update(num_correct, num_infer, num_label)
+            precision, recall, f1 = metric.accumulate()
+            metric.reset()
+            mlflow.log_metric(key=descriptions + "_precision", value=precision)
+            mlflow.log_metric(key=descriptions + "_recall", value=recall)
+            mlflow.log_metric(key=descriptions + "_f1", value=f1)
+            return {descriptions + "precision": precision, descriptions + "recall": recall, descriptions + "f1": f1}
+
+        if result.eval_by_group:
+            ner_type = pd.unique(result.eval_group)
+            num_type = len(ner_type)
+            if num_type < 1:
+                raise ValueError("Cannot compute metrics by eval_group when length of ner_type < 1.")
+            else:
+                metric_result = {}
+                # compute by group
+                for each_type in ner_type:
+                    selected_group = result.eval_group == each_type
+                    logger.debug(f"current ner_type={each_type}")
+                    logger.debug(f"length of current ner_type={sum(selected_group)}")
+                    metric_result.update(
+                        compute_metrics(
+                            predictions=tuple(result.predictions[i][selected_group, :] for i in (0, 1)),
+                            label_ids=tuple(result.label_ids[i][selected_group, :] for i in (0, 1)),
+                            descriptions=each_type + "_",
+                        )
+                    )
+                # compute total
+                Total_Precision, Total_Recall, Total_F1 = 0, 0, 0
+                tmp_metrics = list(metric_result.values())
+                runs = int(len(tmp_metrics) / num_type)
+                for i in range(0, len(tmp_metrics), runs):
+
+                    Total_Precision += tmp_metrics[i]
+                    Total_Recall += tmp_metrics[i + 1]
+                    Total_F1 += tmp_metrics[i + 2]
+                metric_result.update(
+                    {
+                        "precision": Total_Precision / num_type,
+                        "recall": Total_Recall / num_type,
+                        "f1": Total_F1 / num_type,
+                    }
+                )
+                return metric_result
+        else:
+            return compute_metrics(predictions=result.predictions, label_ids=result.label_ids)
 
     def setup_env(self):
         pass
