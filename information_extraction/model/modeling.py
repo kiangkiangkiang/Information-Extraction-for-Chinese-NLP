@@ -3,6 +3,8 @@ from paddlenlp.transformers import (
     ErnieConfig,
     ErnieModel,
 )
+
+
 from paddlenlp.utils.log import logger
 from paddle import nn, Tensor, squeeze
 from typing import Optional
