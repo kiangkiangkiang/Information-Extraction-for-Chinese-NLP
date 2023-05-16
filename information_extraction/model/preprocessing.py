@@ -186,14 +186,18 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512, down_sampling_rat
                 accumulate_token += max_content_len
 
         logger.debug(f"Total number of content (after chunk) of {data_path} is {total_num}. ")
-        for i in range(len(total_for_sample_ratio)):
-            k = list(debug_for_sample_ratio.keys())[i]
-            v1 = list(debug_for_sample_ratio.values())[i]
-            v2 = list(total_for_sample_ratio.values())[i]
-            logger.debug(f"Ratio of {k}: {v1}/{v2} = {v1/v2}. ")
-        logger.debug(
-            f"Total Ratio: {debug_for_sample_ratio['Total Ratio']}/{total_num} = {debug_for_sample_ratio['Total Ratio']/total_num}"
-        )
+        try:
+            for i in range(len(total_for_sample_ratio)):
+                k = list(debug_for_sample_ratio.keys())[i]
+                v1 = list(debug_for_sample_ratio.values())[i]
+                v2 = list(total_for_sample_ratio.values())[i]
+                logger.debug(f"Ratio of {k}: {v1}/{v2} = {v1/v2}. ")
+            logger.debug(
+                f"Total Ratio: {debug_for_sample_ratio['Total Ratio']}/{total_num} = {debug_for_sample_ratio['Total Ratio']/total_num}"
+            )
+        except Exception as e:
+            # Common reason: Some ner_type is not occur in data. (Missing some ner_type)
+            logger.error(e)
 
 
 def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:

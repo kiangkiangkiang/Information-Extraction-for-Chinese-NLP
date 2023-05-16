@@ -118,6 +118,7 @@ class IE_XLNet(XLNetPretrainedModel):
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
         )
+        logger.debug("in xlnet")
         breakpoint()
         start_logits = self.linear_start(sequence_output)
         start_logits = squeeze(start_logits, -1)
