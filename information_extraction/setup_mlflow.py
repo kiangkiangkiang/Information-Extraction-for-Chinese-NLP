@@ -4,6 +4,7 @@ from paddlenlp.utils.log import logger
 from paddle import nn, cast
 import pandas as pd
 from paddlenlp.metrics import SpanEvaluator
+import numpy as np
 import os
 
 
@@ -70,6 +71,7 @@ class IE_MLFlowHandler(MLFlowHandler):
 
     # TODO Using group to compute loss
     def loss_func(self, outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
+
         loss_func = nn.BCELoss()
         start_ids, end_ids = labels
         start_prob, end_prob = outputs
@@ -78,7 +80,7 @@ class IE_MLFlowHandler(MLFlowHandler):
         loss_start = loss_func(start_prob, start_ids)
         loss_end = loss_func(end_prob, end_ids)
         loss = (loss_start + loss_end) / 2.0
-        logger.debug("in mlflow loss")
+        logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}")
         mlflow.log_metric(key=mlflow_key, value=loss, step=mlflow_step)
         return loss
 

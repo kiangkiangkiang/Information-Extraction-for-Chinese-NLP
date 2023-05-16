@@ -105,14 +105,12 @@ class IETrainer(Trainer):
         if self.criterion is not None:
             # Modification
             if model.training:
-                logger.debug(f"training step: {self.mlflow_training_step}")
                 loss = self.criterion(
                     outputs, labels, group, mlflow_key="Training loss", mlflow_step=self.mlflow_training_step
                 )
                 self.mlflow_training_step += 1
 
             else:
-                logger.debug(f"training step: {self.mlflow_eval_step}")
                 loss = self.criterion(
                     outputs, labels, group, mlflow_key="Evaluation loss", mlflow_step=self.mlflow_eval_step
                 )

@@ -5,7 +5,7 @@ from paddlenlp.trainer import (
     get_last_checkpoint,
     TrainingArguments,
 )
-
+from paddlenlp.trainer.trainer_callback import DefaultFlowCallback, EarlyStoppingCallback
 from trainer import IETrainer
 from paddlenlp.transformers import export_model
 from paddle import set_device, optimizer
@@ -97,6 +97,7 @@ def finetune(
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
         optimizers=optimizers,
+        callbacks=[DefaultFlowCallback, EarlyStoppingCallback],
     )
     trainer.optimizers = (
         optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())
