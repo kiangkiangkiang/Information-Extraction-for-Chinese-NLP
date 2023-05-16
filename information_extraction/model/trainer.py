@@ -24,6 +24,7 @@ import paddle
 from typing import Union, Optional, Callable, Dict, Tuple, List, NamedTuple
 
 base_config = get_base_config()
+# TODO if loss太大，print出文本
 
 
 class IEEvalPrediction(NamedTuple):
