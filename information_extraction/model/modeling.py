@@ -6,7 +6,6 @@ from paddlenlp.transformers import (
     XLNetModel,
 )
 
-
 from paddlenlp.utils.log import logger
 from paddle import nn, Tensor, squeeze
 from typing import Optional
@@ -78,11 +77,13 @@ class UIE(ErniePretrainedModel):
 class IE_XLNet(XLNetPretrainedModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.xlnet = XLNetModel()
-        self.linear_start = nn.Linear(self.xlnet.config.hidden_size, 1)
-        self.linear_end = nn.Linear(self.xlnet.config.hidden_size, 1)
+        self.xlnet = XLNetModel(vocab_size=32000)
+        self.linear_start = nn.Linear(self.xlnet.config["d_model"], 1)
+        self.linear_end = nn.Linear(self.xlnet.config["d_model"], 1)
+        self.config = self.xlnet.config["self"]
+        breakpoint()
         self.sigmoid = nn.Sigmoid()
-        self.apply(self.init_weights)
+        self.init_weights()
 
     def forward(
         self,
