@@ -105,7 +105,7 @@ def finetune(
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
         optimizers=optimizers,
-        callbacks=[DefaultFlowCallback, EarlyStoppingCallback],
+        callbacks=[DefaultFlowCallback],
     )
     trainer.optimizers = (
         optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())
