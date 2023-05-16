@@ -29,6 +29,7 @@ def finetune(
     train_path: str,
     dev_path: str,
     max_seq_len: int = 512,
+    down_sampling_ratio: float = 0.5,
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
     multilingual: Optional[bool] = False,
@@ -66,7 +67,14 @@ def finetune(
     )
 
     train_dataset, dev_dataset = (
-        load_dataset(read_finetune_data, data_path=data, max_seq_len=512, lazy=False) for data in (train_path, dev_path)
+        load_dataset(
+            read_finetune_data,
+            data_path=data,
+            max_seq_len=max_seq_len,
+            down_sampling_ratio=down_sampling_ratio,
+            lazy=False,
+        )
+        for data in (train_path, dev_path)
     )
 
     model, tokenizer = load_model_and_tokenizer(model_name_or_path)
@@ -140,6 +148,7 @@ def finetune(
                     n_epoch=training_args.num_train_epochs,
                     optimizer=trainer.optimizers,
                     train_data_len=len(train_dataset),
+                    down_sampling_ratio=down_sampling_ratio,
                 ),
             )
 
@@ -214,6 +223,7 @@ if __name__ == "__main__":
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
         max_seq_len=data_args.max_seq_len,
+        down_sampling_ratio=data_args.down_sampling_ratio,
         model_name_or_path=model_args.model_name_or_path,
         export_model_dir=model_args.export_model_dir,
         multilingual=model_args.multilingual,

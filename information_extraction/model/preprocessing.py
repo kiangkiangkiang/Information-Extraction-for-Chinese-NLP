@@ -4,6 +4,7 @@ import json
 from dataclasses import dataclass, field, asdict
 from typing import Optional, List, Any, Dict, Union, Tuple
 from paddlenlp.trainer import TrainingArguments
+import numpy as np
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -36,6 +37,11 @@ class DataArguments:
             "help": "The maximum total input sequence length after tokenization. Sequences longer "
             "than this will be truncated, sequences shorter will be padded."
         },
+    )
+
+    down_sampling_ratio: Optional[float] = field(
+        default=0.3,
+        metadata={"help": "The drop out ratio of negative samples."},
     )
 
 
@@ -71,7 +77,12 @@ class IETrainingArguments(TrainingArguments):
         return super().__post_init__()
 
 
-def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]:
+def is_down_sampling(down_sampling_ratio: float = 0.5) -> bool:
+    criterion = np.random.uniform(0, 1, 1)[0]
+    return True if criterion < down_sampling_ratio else False
+
+
+def read_finetune_data(data_path: str, max_seq_len: int = 512, down_sampling_ratio: float = 0) -> Dict[str, str]:
     """
     Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
     Model Input Format: [CLS] Prompt [SEP] Content [SEP].
@@ -89,6 +100,13 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
         Iterator[Dict[str, str]]: 每個batch所吃的原始文本（Before tokenization）。
     """
 
+    debug_for_sample_ratio = {i: 0 for i in base_config.ner_type}
+    total_for_sample_ratio = {i: 0 for i in base_config.ner_type}
+    total_num = 0
+    debug_for_sample_ratio["Total Ratio"] = 0
+    if down_sampling_ratio < 0 or down_sampling_ratio > 1:
+        raise ValueError("down_sampling_ratio must between [0, 1].")
+
     with open(data_path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             json_line = json.loads(line)
@@ -102,9 +120,11 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
             accumulate_token = 0
 
             # start pop all subcontent (segment by max_seq_len)
+            # logger.debug(f"max_seq_len = {max_seq_len}")
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
+                do_down_sampling = False
 
                 # pop result in subcontent
                 while len(result_list) > 0:
@@ -135,23 +155,45 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512) -> Dict[str, str]
                         result_list[0]["end"] -= max_content_len
                         break  # result list is sorted by start
 
-                # TODO test work
-                truncate_result = {
-                    "content": content[:max_content_len],
-                    "result_list": current_content_result,
-                    "prompt": prompt,
-                }
+                # down sampling
+                if len(current_content_result) == 0:
+                    do_down_sampling = is_down_sampling(down_sampling_ratio=down_sampling_ratio)
 
-                for each_result in truncate_result["result_list"]:
-                    adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
-                    true_data = each_result["text"]
-                    if adjust_data != true_data:
-                        raise PreprocessingError(f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}.")
-                logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
-                yield truncate_result
+                if not do_down_sampling:
+                    truncate_result = {
+                        "content": content[:max_content_len],
+                        "result_list": current_content_result,
+                        "prompt": prompt,
+                    }
+
+                    total_num += 1
+                    total_for_sample_ratio[prompt] += 1
+                    if len(current_content_result) > 0:
+                        debug_for_sample_ratio[prompt] += 1
+                        debug_for_sample_ratio["Total Ratio"] += 1
+
+                    for each_result in truncate_result["result_list"]:
+                        adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
+                        true_data = each_result["text"]
+                        if adjust_data != true_data:
+                            raise PreprocessingError(
+                                f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}."
+                            )
+                    # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
+                    yield truncate_result
 
                 content = content[max_content_len:]
                 accumulate_token += max_content_len
+
+        logger.debug(f"Total number of content (after chunk) of {data_path} is {total_num}. ")
+        for i in range(len(total_for_sample_ratio)):
+            k = list(debug_for_sample_ratio.keys())[i]
+            v1 = list(debug_for_sample_ratio.values())[i]
+            v2 = list(total_for_sample_ratio.values())[i]
+            logger.debug(f"Ratio of {k}: {v1}/{v2} = {v1/v2}. ")
+        logger.debug(
+            f"Total Ratio: {debug_for_sample_ratio['Total Ratio']}/{total_num} = {debug_for_sample_ratio['Total Ratio']/total_num}"
+        )
 
 
 def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:
@@ -215,10 +257,10 @@ def convert_to_uie_format(
     Note: 在 finetune.py 中，設定此方法為預設 Callback Function，可根據任務或模型換成自定義方法。
 
     Args:
-        data (Dict[str, str], optional): 切片後的文本，通常來自於 read_finetune_data() 的結果
+        data (Dict[str, str], optional): 切片後的文本，通常來自於 () 的結果
             格式為 {"content": subcontent, "result_list": result_list_in_subcontent, "prompt": prompt}.
         tokenizer (Any, optional): paddlenlp.transformers.AutoTokenizer
-        max_seq_len (int, optional): 切片文本的最大長度，通常與 read_finetune_data() 一致，truncation 預設為 True. Defaults to 512.
+        max_seq_len (int, optional): 切片文本的最大長度，通常與 () 一致，truncation 預設為 True. Defaults to 512.
         multilingual (Optional[bool], optional): Whether the model is a multilingual model. Defaults to False.
 
     Returns:
@@ -275,7 +317,7 @@ def get_base_config():
 
 
 """
-test = read_finetune_data("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
+test = ("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
 s = next(test);s
 s
 s["content"][431:437]
