@@ -78,9 +78,9 @@ class UIE(ErniePretrainedModel):
 class IE_XLNet(XLNetPretrainedModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.xlnet = XLNetModel(config)
-        self.linear_start = nn.Linear(config.hidden_size, 1)
-        self.linear_end = nn.Linear(config.hidden_size, 1)
+        self.xlnet = XLNetModel()
+        self.linear_start = nn.Linear(self.xlnet.config.hidden_size, 1)
+        self.linear_end = nn.Linear(self.xlnet.config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
         self.apply(self.init_weights)
 
@@ -112,13 +112,13 @@ class IE_XLNet(XLNetPretrainedModel):
                 inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
                 start_prob, end_prob = model(**inputs)
         """
-        sequence_output, _ = self.ernie(
+        sequence_output, _ = self.xlnet(
             input_ids=input_ids,
             token_type_ids=token_type_ids,
-            position_ids=position_ids,
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
         )
+        breakpoint()
         start_logits = self.linear_start(sequence_output)
         start_logits = squeeze(start_logits, -1)
         start_prob = self.sigmoid(start_logits)
