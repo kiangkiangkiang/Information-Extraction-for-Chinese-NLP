@@ -109,7 +109,7 @@ class IETrainer(Trainer):
                 loss = self.criterion(
                     outputs, labels, group, mlflow_key="Training loss", mlflow_step=self.mlflow_training_step
                 )
-                self.mlflow_training_step += self.mlflow_training_step
+                self.mlflow_training_step += 1
 
             else:
                 logger.debug(f"training step: {self.mlflow_eval_step}")
