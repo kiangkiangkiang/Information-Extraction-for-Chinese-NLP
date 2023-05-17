@@ -82,7 +82,7 @@ def SpanEvaluator_metrics(result):
 # load model and tokenizer
 def load_model_and_tokenizer(model_name_or_path: str):
 
-    """main model: UIE
+    """# main model: UIE
     # from pretrained tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
@@ -93,4 +93,5 @@ def load_model_and_tokenizer(model_name_or_path: str):
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_XLNet.from_pretrained(model_name_or_path)
     breakpoint()
+
     return model, tokenizer
