@@ -12,7 +12,7 @@ from paddle import set_device, optimizer
 from paddle.static import InputSpec
 from paddlenlp.utils.log import logger
 from config import BaseConfig
-from typing import Optional, List, Any, Callable, Dict, Union, Tuple
+from typing import Optional, List, Any, Callable, Dict, Union, Tuple, Literal
 from callbacks import *
 from functools import partial
 from paddlenlp.datasets import load_dataset
@@ -33,6 +33,7 @@ def finetune(
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
     multilingual: Optional[bool] = False,
+    read_data_method: Optional[Literal["chunk", "full"]] = "chunk",
     convert_and_tokenize_function: Optional[
         Callable[[Dict[str, str], Any, int], Dict[str, Union[str, float]]]
     ] = convert_to_uie_format,
@@ -58,6 +59,14 @@ def finetune(
     if model_name_or_path in ["uie-m-base", "uie-m-large"]:
         multilingual = True
 
+    if read_data_method not in ["chunk", "full"]:
+        logger.warning(
+            f"read_data_method must be 'chunk' or 'full', {read_data_method} is not support. \
+            Automatically change read_data_method to 'chunk'."
+        )
+        read_data_method = "chunk"
+
+    read_data = read_data_by_chunk if read_data_method == "chunk" else read_full_data
     set_device(training_args.device)
 
     # Log on each process the small summary:
@@ -68,7 +77,7 @@ def finetune(
 
     train_dataset, dev_dataset = (
         load_dataset(
-            read_finetune_data,
+            read_data,
             data_path=data,
             max_seq_len=max_seq_len,
             down_sampling_ratio=down_sampling_ratio,

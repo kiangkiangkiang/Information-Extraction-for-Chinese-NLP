@@ -5,7 +5,7 @@ from paddlenlp.metrics import SpanEvaluator
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
 from paddlenlp.transformers import AutoTokenizer
-from modeling import UIE, IE_XLNet
+from modeling import UIE, IE_XLNet, IE_BigBird
 import pandas as pd
 
 current = os.path.dirname(os.path.realpath(__file__))
@@ -82,7 +82,7 @@ def SpanEvaluator_metrics(result):
 # load model and tokenizer
 def load_model_and_tokenizer(model_name_or_path: str):
 
-    """# main model: UIE
+    # main model: UIE
     # from pretrained tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
@@ -90,8 +90,15 @@ def load_model_and_tokenizer(model_name_or_path: str):
     model = UIE.from_pretrained(model_name_or_path)
     """
 
+    # test for xlnet (fail)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_XLNet.from_pretrained(model_name_or_path)
+    
+
+    # test for bigbird
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    model = IE_BigBird.from_pretrained(model_name_or_path)
     breakpoint()
+    """
 
     return model, tokenizer

@@ -82,7 +82,7 @@ def is_down_sampling(down_sampling_ratio: float = 0.5) -> bool:
     return True if criterion < down_sampling_ratio else False
 
 
-def read_finetune_data(data_path: str, max_seq_len: int = 512, down_sampling_ratio: float = 0) -> Dict[str, str]:
+def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_ratio: float = 0) -> Dict[str, str]:
     """
     Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
     Model Input Format: [CLS] Prompt [SEP] Content [SEP].
@@ -199,6 +199,8 @@ def read_finetune_data(data_path: str, max_seq_len: int = 512, down_sampling_rat
             # Common reason: Some ner_type is not occur in data. (Missing some ner_type)
             logger.error(e)
 
+def read_full_data():
+    pass
 
 def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:
     """Scale the offset_mapping in tokenization output to align with the prompt learning format.
