@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Optional
 from paddlenlp.metrics import SpanEvaluator
+
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
 from paddlenlp.transformers import AutoTokenizer
@@ -84,17 +85,19 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     # main model: UIE
     # from pretrained tokenizer
+
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     model = UIE.from_pretrained(model_name_or_path)
-    """
 
+    """
     # test for xlnet (fail)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_XLNet.from_pretrained(model_name_or_path)
+    """
+    """
     
-
     # test for bigbird
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_BigBird.from_pretrained(model_name_or_path)

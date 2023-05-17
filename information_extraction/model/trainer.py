@@ -97,7 +97,7 @@ class IETrainer(Trainer):
                 labels = inputs["generator_labels"]
         else:
             labels = None
-
+        breakpoint()
         outputs = model(**inputs)
 
         min_word = self.__get_min_word_in_ner_type()

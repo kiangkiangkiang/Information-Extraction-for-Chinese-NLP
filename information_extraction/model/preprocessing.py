@@ -2,7 +2,7 @@ import os
 import sys
 import json
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Any, Dict, Union, Tuple
+from typing import Optional, List, Any, Dict, Union, Tuple, Literal
 from paddlenlp.trainer import TrainingArguments
 import numpy as np
 
@@ -42,6 +42,14 @@ class DataArguments:
     down_sampling_ratio: Optional[float] = field(
         default=0.3,
         metadata={"help": "The drop out ratio of negative samples."},
+    )
+    read_data_method: Optional[str] = field(
+        default="chunk",
+        metadata={
+            "help": "The argument determines how to deal with the input content. If full, "
+            "it will read the full content and send it as input to the model. If chunk, it will"
+            "cut the content into several chunks and send them as an individual observation to the model."
+        },
     )
 
 
@@ -108,7 +116,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
         raise ValueError("down_sampling_ratio must between [0, 1].")
 
     with open(data_path, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
+        for line in f:
             json_line = json.loads(line)
             content = json_line["content"].strip()
             prompt = json_line["prompt"]
@@ -199,8 +207,31 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
             # Common reason: Some ner_type is not occur in data. (Missing some ner_type)
             logger.error(e)
 
-def read_full_data():
-    pass
+
+def read_full_data(data_path: str) -> Tuple[Dict[str, str], int]:
+    logger.info(
+        f"Read Full Data method is selected. The max_seq_len and down_sampling_ratio arguments will be ignore..."
+    )
+    with open(data_path, "r", encoding="utf-8") as f:
+        for line in f:
+            json_line = json.loads(line)
+            yield {
+                "content": json_line["content"].strip(),
+                "result_list": json_line["result_list"],
+                "prompt": json_line["prompt"],
+            }
+
+
+def get_max_content_len(data_path_list: List[str]) -> int:
+    max_content_len = -1
+    for each_data_path in data_path_list:
+        with open(each_data_path, "r", encoding="utf-8") as f:
+            for line in f:
+                json_line = json.loads(line)
+                if len(json_line["content"].strip()) > max_content_len:
+                    max_content_len = len(json_line["content"].strip())
+    return max_content_len
+
 
 def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:
     """Scale the offset_mapping in tokenization output to align with the prompt learning format.
@@ -272,6 +303,7 @@ def convert_to_uie_format(
     Returns:
         Dict[str, Union[str, float]]: 模型真正的 input 格式。
     """
+    breakpoint()
 
     # Tokenization and Concate to the following format: [CLS] prompt [SEP] content [SEP]
     encoded_inputs = tokenizer(
@@ -285,7 +317,7 @@ def convert_to_uie_format(
         return_dict=False,
         return_offsets_mapping=True,
     )[0]
-
+    breakpoint()
     # initialize start_ids, end_ids as 0.0
     start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
 
@@ -298,7 +330,7 @@ def convert_to_uie_format(
         aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
-
+    breakpoint()
     return (
         {
             "input_ids": encoded_inputs["input_ids"],

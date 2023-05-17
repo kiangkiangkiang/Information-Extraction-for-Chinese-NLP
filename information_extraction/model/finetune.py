@@ -25,6 +25,7 @@ os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
 
 # main function
+# TODO 不處理多語言
 def finetune(
     train_path: str,
     dev_path: str,
@@ -66,7 +67,13 @@ def finetune(
         )
         read_data_method = "chunk"
 
-    read_data = read_data_by_chunk if read_data_method == "chunk" else read_full_data
+    if read_data_method == "chunk":
+        read_data = read_data_by_chunk
+    else:
+        read_data = read_full_data
+        max_seq_len = get_max_content_len([train_path, dev_path])
+
+    breakpoint()
     set_device(training_args.device)
 
     # Log on each process the small summary:
@@ -181,23 +188,11 @@ def finetune(
     if training_args.do_export:
         # You can also load from certain checkpoint
         # trainer.load_state_dict_from_checkpoint("/path/to/checkpoint/")
-        if multilingual:
-            input_spec = [
-                InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
-                InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
-            ]
-        else:
-            input_spec = [
-                InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
-                InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
-                InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
-                InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
-            ]
         if export_model_dir is None:
             logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir}export as default.")
             export_model_dir = os.path.join(training_args.output_dir)
         try:
-            export_model(model=trainer.model, input_spec=input_spec, path=export_model_dir)
+            export_model(model=trainer.model, input_spec=trainer.model.input_spec, path=export_model_dir)
         except Exception as e:
             logger.error(f"Fail to export model. Error in export_model: {e.__class__.__name__}: {e}.")
 
@@ -234,6 +229,7 @@ if __name__ == "__main__":
         max_seq_len=data_args.max_seq_len,
         down_sampling_ratio=data_args.down_sampling_ratio,
         model_name_or_path=model_args.model_name_or_path,
+        read_data_method=data_args.read_data_method,
         export_model_dir=model_args.export_model_dir,
         multilingual=model_args.multilingual,
         training_args=training_args,

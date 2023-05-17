@@ -4,11 +4,12 @@ from paddlenlp.transformers import (
     ErnieModel,
     XLNetPretrainedModel,
     XLNetModel,
+    XLNetConfig,
     BigBirdForPretraining,
     BigBirdConfig,
     BigBirdModel,
 )
-
+from paddle.static import InputSpec
 
 from paddlenlp.utils.log import logger
 from paddle import nn, Tensor, squeeze
@@ -32,7 +33,12 @@ class UIE(ErniePretrainedModel):
         self.linear_start = nn.Linear(config.hidden_size, 1)
         self.linear_end = nn.Linear(config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
-        self.apply(self.init_weights)
+        self.input_spec = [
+            InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
+        ]
 
     def forward(
         self,
@@ -79,15 +85,19 @@ class UIE(ErniePretrainedModel):
 
 
 class IE_XLNet(XLNetPretrainedModel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.xlnet = XLNetModel(vocab_size=32000)
-        self.linear_start = nn.Linear(self.xlnet.config["d_model"], 1)
-        self.linear_end = nn.Linear(self.xlnet.config["d_model"], 1)
-        self.config = self.xlnet.config["self"]
+    def __init__(self, config: XLNetConfig):
+        super(IE_XLNet, self).__init__(config)
+        self.xlnet = XLNetModel(config)
+        self.initializer_range = config.initializer_range
+        self.linear_start = nn.Linear(config.d_model, 1)
+        self.linear_end = nn.Linear(config.d_model, 1)
         breakpoint()
         self.sigmoid = nn.Sigmoid()
-        self.init_weights()
+        self.input_spec = [
+            InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
+        ]
 
     def forward(
         self,
@@ -117,14 +127,13 @@ class IE_XLNet(XLNetPretrainedModel):
                 inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
                 start_prob, end_prob = model(**inputs)
         """
-        sequence_output, _ = self.xlnet(
+        sequence_output = self.xlnet(
             input_ids=input_ids,
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
         )
         logger.debug("in xlnet")
-        breakpoint()
         start_logits = self.linear_start(sequence_output)
         start_logits = squeeze(start_logits, -1)
         start_prob = self.sigmoid(start_logits)
