@@ -18,6 +18,7 @@ from functools import partial
 from paddlenlp.datasets import load_dataset
 import os
 
+
 # Add MLflow for experiment # change mlflow to False
 MLFLOW = True
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
@@ -69,13 +70,12 @@ def finetune(
 
     if read_data_method == "chunk":
         read_data = read_data_by_chunk
+        convert_and_tokenize_function = convert_to_uie_format
     else:
         read_data = read_full_data
-        max_seq_len = get_max_content_len([train_path, dev_path])
+        convert_and_tokenize_function = convert_to_full_data_format
 
-    breakpoint()
     set_device(training_args.device)
-
     # Log on each process the small summary:
     logger.info(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, world_size: {training_args.world_size}, "

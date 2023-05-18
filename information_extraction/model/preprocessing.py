@@ -2,9 +2,11 @@ import os
 import sys
 import json
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Any, Dict, Union, Tuple, Literal
+from typing import Optional, List, Any, Dict, Union, Tuple
 from paddlenlp.trainer import TrainingArguments
 import numpy as np
+from collections import defaultdict
+import pandas as pd
 
 current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
@@ -303,7 +305,6 @@ def convert_to_uie_format(
     Returns:
         Dict[str, Union[str, float]]: 模型真正的 input 格式。
     """
-    breakpoint()
 
     # Tokenization and Concate to the following format: [CLS] prompt [SEP] content [SEP]
     encoded_inputs = tokenizer(
@@ -317,7 +318,7 @@ def convert_to_uie_format(
         return_dict=False,
         return_offsets_mapping=True,
     )[0]
-    breakpoint()
+
     # initialize start_ids, end_ids as 0.0
     start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
 
@@ -330,7 +331,7 @@ def convert_to_uie_format(
         aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
-    breakpoint()
+
     return (
         {
             "input_ids": encoded_inputs["input_ids"],
@@ -348,6 +349,102 @@ def convert_to_uie_format(
             "end_positions": end_ids,
         }
     )
+
+
+def convert_to_full_data_format(
+    data: Dict[str, str],
+    tokenizer: Any,
+    max_seq_len: int = 512,
+    multilingual: Optional[bool] = False,
+) -> Dict[str, Union[str, float]]:
+
+    """TODO
+    1. [DONE] split chunk by max_seq_len
+    2. [DONE] tokenize each chunk
+    3. [DONE] concate all chunk
+    4. [DONE] adjust index by chunk (only for loss, model will not input)
+    5. make label from adjust_index mapping
+    """
+
+    max_content_len = (
+        max_seq_len - len(data["prompt"]) - 3
+    )  # 3 means [CLS] [SEP] [SEP] in [CLS] prompt [SEP] content [SEP]
+    encoded_inputs = defaultdict(list)
+    while data["content"]:
+        # 1. split chunk by max_content_len
+        current_content = data["content"][:max_content_len]
+
+        # 2. tokenize each chunk
+        tmp_inputs = tokenizer(
+            text=[data["prompt"]],
+            text_pair=[current_content],
+            max_seq_len=max_seq_len,
+            pad_to_max_seq_len=True,
+            return_attention_mask=True,
+            return_position_ids=True,
+            return_dict=False,
+            return_offsets_mapping=True,
+        )[0]
+
+        # 3. concate all chunk
+        for key in tmp_inputs:
+            encoded_inputs[key].extend(tmp_inputs[key])
+
+        data["content"] = data["content"][max_content_len:]
+
+    # only for debug (can be delete)
+
+    logger.debug(f"len(content) after tokenize = {len(encoded_inputs['input_ids'])}")
+
+    # 4. adjust index by chunk (only for loss, model will not input)
+    start_ids, end_ids = map(lambda x: x * len(encoded_inputs["input_ids"]), ([0.0], [0.0]))
+
+    # 4.1 adjust label index
+    adjusted_offset_mapping = []
+    drift = 0
+    accumulate_chunk_drift = 0
+    while encoded_inputs["offset_mapping"]:
+        current_mapping, tmp = drift_offsets_mapping(encoded_inputs["offset_mapping"][:max_seq_len])
+        # logger.debug(f"tmp drift = {current_mapping}")
+        drift += tmp
+        if adjusted_offset_mapping:
+            # 4.2 adjust index for chunk
+            chunk_drift = 0
+            for i in range(1, max_seq_len):
+                if current_mapping[i][0] == 0 and current_mapping[i][1] == 0 and chunk_drift == 0:
+                    chunk_drift = accumulate_chunk_drift
+                if current_mapping[i][0] == 0 and current_mapping[i][1] == 0:
+                    continue
+                current_mapping[i][0] += chunk_drift
+                current_mapping[i][1] += chunk_drift
+
+        adjusted_offset_mapping.extend(current_mapping)
+        encoded_inputs["offset_mapping"] = encoded_inputs["offset_mapping"][max_seq_len:]
+        accumulate_chunk_drift += max_seq_len
+    breakpoint()
+    # 5. make label from adjust_index mapping
+    print(123)
+    for item in data["result_list"]:
+        aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
+        aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
+        adjust_ans = "".join(
+            tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][aligned_start_index:aligned_end_index])
+        )
+        logger.debug(f"After adjust answer: {adjust_ans}")
+        logger.debug(f"True answer: {item['text']}")
+        assert adjust_ans == item["text"], "Convert result index error in convert_to_full_data_format."
+        # logger.debug(f"check aligned_start_index, {encoded_inputs['input_ids'][aligned_start_index]}")
+        start_ids[aligned_start_index] = 1.0
+        end_ids[aligned_end_index] = 1.0
+
+    return {
+        "input_ids": encoded_inputs["input_ids"],
+        "token_type_ids": encoded_inputs["token_type_ids"],
+        "position_ids": encoded_inputs["position_ids"],
+        "attention_mask": encoded_inputs["attention_mask"],
+        "start_positions": start_ids,
+        "end_positions": end_ids,
+    }
 
 
 def get_base_config():

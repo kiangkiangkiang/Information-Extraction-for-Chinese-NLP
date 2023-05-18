@@ -82,6 +82,10 @@ class IETrainer(Trainer):
         How the loss is computed by Trainer. By default, all models return the loss in the first element.
         Subclass and override for custom behavior.
         """
+        # Modification
+        # 這裡接到的inputs是split後的input，label是整個文本的label，兩者長度不同
+        # ex. inputs['input_ids'] = 7 by 2048, label = 1 by 14700
+        breakpoint()
 
         if self.criterion is not None:
             if "labels" in inputs:
@@ -97,9 +101,38 @@ class IETrainer(Trainer):
                 labels = inputs["generator_labels"]
         else:
             labels = None
-        breakpoint()
-        outputs = model(**inputs)
 
+        # Modification
+        is_test_full_content = True
+        if is_test_full_content:
+            paddle.set_device(self.args.device)
+            # model.config.hidden_size
+            model_max_len = 2048
+            breakpoint()
+            model_input = {}
+            counter = 0
+            last_sequence_output = []
+
+            # model loop
+            while inputs["input_ids"].shape[1] > 0:
+                if inputs["input_ids"][0, 0] == 0:  # start with padding
+                    break
+                for key in inputs:
+                    model_input[key] = inputs[key][:, :model_max_len]
+                    inputs[key] = inputs[key][:, model_max_len:]
+                sequence_output, _ = model(
+                    **model_input
+                )  # output[0] = 1 * max_len * hidden_size, outputs[1] = 1 * hidden_size
+                if len(last_sequence_output) > 0:
+                    last_sequence_output += sequence_output
+                else:
+                    last_sequence_output = sequence_output
+                counter += 1
+                breakpoint()
+        else:
+            outputs = model(**inputs)
+
+        breakpoint()
         min_word = self.__get_min_word_in_ner_type()
         group = self.__get_eval_group(min_word, inputs)
 
