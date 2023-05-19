@@ -9,6 +9,7 @@ from paddlenlp.transformers import AutoTokenizer
 from modeling import UIE, IE_XLNet
 
 import pandas as pd
+import numpy as np
 
 from paddlenlp.transformers import ErnieModel, UIEM
 
@@ -30,6 +31,7 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
     loss_start = loss_func(start_prob, start_ids)
     loss_end = loss_func(end_prob, end_ids)
     loss = (loss_start + loss_end) / 2.0
+    logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}")
     return loss
 
 

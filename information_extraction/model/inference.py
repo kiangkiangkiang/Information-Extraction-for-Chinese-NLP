@@ -81,11 +81,13 @@ def experiment_inference(
                                     logger.error(
                                         f"Fail!! Incorrect in {json_line['prompt']}, {ground_text} != {infer_text}."
                                     )
+                                    logger.error(f"content={json_line['content'].strip()}")
                         else:
                             # wrong case [...] -> [] or [] -> [...]
                             logger.error(
                                 f"Fail!! Incorrect in {json_line['prompt']}, True: {json_line['result_list']} != Inf: {final_result}."
                             )
+                            logger.error(f"content={json_line['content'].strip()}")
 
                 else:
                     # not implement
