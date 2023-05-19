@@ -85,7 +85,6 @@ class IETrainer(Trainer):
         # Modification
         # 這裡接到的inputs是split後的input，label是整個文本的label，兩者長度不同
         # ex. inputs['input_ids'] = 7 by 2048, label = 1 by 14700
-        breakpoint()
 
         if self.criterion is not None:
             if "labels" in inputs:
@@ -103,7 +102,7 @@ class IETrainer(Trainer):
             labels = None
 
         # Modification
-        is_test_full_content = True
+        is_test_full_content = False
         if is_test_full_content:
             paddle.set_device(self.args.device)
             # model.config.hidden_size
@@ -132,7 +131,6 @@ class IETrainer(Trainer):
         else:
             outputs = model(**inputs)
 
-        breakpoint()
         min_word = self.__get_min_word_in_ner_type()
         group = self.__get_eval_group(min_word, inputs)
 

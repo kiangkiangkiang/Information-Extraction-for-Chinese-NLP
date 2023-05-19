@@ -16,6 +16,7 @@ from typing import Optional, List, Any, Callable, Dict, Union, Tuple, Literal
 from callbacks import *
 from functools import partial
 from paddlenlp.datasets import load_dataset
+from inference import *
 import os
 
 
@@ -195,6 +196,12 @@ def finetune(
             export_model(model=trainer.model, input_spec=trainer.model.input_spec, path=export_model_dir)
         except Exception as e:
             logger.error(f"Fail to export model. Error in export_model: {e.__class__.__name__}: {e}.")
+
+    # inference for testing data
+    # 實驗程式 務必之後刪除
+    do_inference = True
+    if do_inference:
+        experiment_inference()
 
 
 if __name__ == "__main__":

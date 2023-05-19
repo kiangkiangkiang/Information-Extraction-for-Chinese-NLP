@@ -7,9 +7,10 @@ from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
 from paddlenlp.transformers import AutoTokenizer
 from modeling import UIE, IE_XLNet
+
 import pandas as pd
 
-from paddlenlp.transformers import ErnieModel
+from paddlenlp.transformers import ErnieModel, UIEM
 
 
 current = os.path.dirname(os.path.realpath(__file__))
@@ -88,13 +89,13 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     # main model: UIE
     # from pretrained tokenizer
-    """
+
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     model = UIE.from_pretrained(model_name_or_path)
 
-
+    """
     # test for xlnet (fail)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_XLNet.from_pretrained(model_name_or_path)
@@ -105,9 +106,23 @@ def load_model_and_tokenizer(model_name_or_path: str):
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_BigBird.from_pretrained(model_name_or_path)
     breakpoint()
-    """
+    
 
     tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
     model = ErnieModel.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
+    
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+    # from pretrained model
+    model = UIEX.from_pretrained(model_name_or_path)
+
+    """
+    """
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+
+    # from pretrained model
+    model = UIEM.from_pretrained(model_name_or_path)
+    """
 
     return model, tokenizer

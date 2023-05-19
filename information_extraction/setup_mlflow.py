@@ -99,7 +99,6 @@ class IE_MLFlowHandler(MLFlowHandler):
             metric.update(num_correct, num_infer, num_label)
             precision, recall, f1 = metric.accumulate()
             metric.reset()
-            breakpoint()
             mlflow.log_metric(key=descriptions + "_precision", value=precision)
             mlflow.log_metric(key=descriptions + "_recall", value=recall)
             mlflow.log_metric(key=descriptions + "_f1", value=f1)

@@ -31,3 +31,20 @@ MLFLOW目前埋在trainer和finetune裏面
    3. 先切資料先token: 預設16 & 2048）過模型前再處理 （無腦concate)，問題: 16 by 2048的16是16篇文本，不是同一篇
    4. 後切資料後token: ＮＯＷ TRY (不能完全不痛直接餵)
    5. 結論：不能把token擺在切資料前，不然會有1的問題 
+
+
+
+
+# inference是怎麼做的？ TODO
+
+``` python
+from paddlenlp import Taskflow
+my_ie = Taskflow("information_extraction", schema=schema, 
+                 task_path='./data_v3/checkpoint/model_best',
+                 precision='fp32')
+my_ie(mytext)
+```
+
+1. Taskflow init: 
+   - 非所有任務都可用，要在TASKS內
+

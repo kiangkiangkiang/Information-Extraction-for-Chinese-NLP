@@ -17,6 +17,11 @@ from utils.exceptions import DataError, PreprocessingError
 from config import BaseConfig
 
 base_config = BaseConfig()
+# SOLATIUM_WORD = ['精神', '慰撫', '撫慰', '非財產']
+# INCOME_WORD = ['薪', '收入', '所得', '俸']
+# MEDICAL_WORD = []
+# THER_WORD = []
+MUST_SAMPLE_LIST = ["元"]  # 有提到錢的樣本都一定要sample進來
 
 
 @dataclass
@@ -165,32 +170,25 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
                         result_list[0]["end"] -= max_content_len
                         break  # result list is sorted by start
 
-                # down sampling
-                if len(current_content_result) == 0:
-                    do_down_sampling = is_down_sampling(down_sampling_ratio=down_sampling_ratio)
+                truncate_result = {
+                    "content": content[:max_content_len],
+                    "result_list": current_content_result,
+                    "prompt": prompt,
+                }
 
-                if not do_down_sampling:
-                    truncate_result = {
-                        "content": content[:max_content_len],
-                        "result_list": current_content_result,
-                        "prompt": prompt,
-                    }
+                total_num += 1
+                total_for_sample_ratio[prompt] += 1
+                if len(current_content_result) > 0:
+                    debug_for_sample_ratio[prompt] += 1
+                    debug_for_sample_ratio["Total Ratio"] += 1
 
-                    total_num += 1
-                    total_for_sample_ratio[prompt] += 1
-                    if len(current_content_result) > 0:
-                        debug_for_sample_ratio[prompt] += 1
-                        debug_for_sample_ratio["Total Ratio"] += 1
-
-                    for each_result in truncate_result["result_list"]:
-                        adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
-                        true_data = each_result["text"]
-                        if adjust_data != true_data:
-                            raise PreprocessingError(
-                                f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}."
-                            )
-                    # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
-                    yield truncate_result
+                for each_result in truncate_result["result_list"]:
+                    adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
+                    true_data = each_result["text"]
+                    if adjust_data != true_data:
+                        raise PreprocessingError(f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}.")
+                # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
+                yield truncate_result
 
                 content = content[max_content_len:]
                 accumulate_token += max_content_len
