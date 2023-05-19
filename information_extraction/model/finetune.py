@@ -71,7 +71,8 @@ def finetune(
 
     if read_data_method == "chunk":
         read_data = read_data_by_chunk
-        convert_and_tokenize_function = convert_to_uie_format
+        # convert_and_tokenize_function = convert_to_uie_format
+        convert_and_tokenize_function = convert_example
     else:
         read_data = read_full_data
         convert_and_tokenize_function = convert_to_full_data_format

@@ -1,7 +1,10 @@
 import os
 import sys
 from typing import Optional
+
 from paddlenlp.metrics import SpanEvaluator
+
+# from test_metric import SpanEvaluator
 
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
@@ -37,9 +40,11 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
 
 # metrics calculator
 def SpanEvaluator_metrics(result):
+
     metric = SpanEvaluator()
 
     def compute_metrics(predictions, label_ids, descriptions=""):
+        # test metrics
         start_prob, end_prob = predictions
         start_ids, end_ids = label_ids
         metric.reset()
@@ -59,6 +64,7 @@ def SpanEvaluator_metrics(result):
             # compute by group
             for each_type in ner_type:
                 selected_group = result.eval_group == each_type
+                # this_data = np.array(result.dataloader.dataset.data)[selected_group]
                 metric_result.update(
                     compute_metrics(
                         predictions=tuple(result.predictions[i][selected_group, :] for i in (0, 1)),

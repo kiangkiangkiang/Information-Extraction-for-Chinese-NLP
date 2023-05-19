@@ -32,6 +32,7 @@ class IEEvalPrediction(NamedTuple):
     predictions: Union[np.ndarray, Tuple[np.ndarray]]
     label_ids: Union[np.ndarray, Tuple[np.ndarray]]
     eval_group: Union[np.ndarray, Tuple[np.ndarray]]
+    dataloader: Union[np.ndarray, Tuple[np.ndarray]]
 
 
 class IETrainer(Trainer):
@@ -337,8 +338,11 @@ class IETrainer(Trainer):
         # Metrics!
         if self.compute_metrics is not None and all_preds is not None and all_labels is not None:
             # Modification
+            # test metrics
             metrics = self.compute_metrics(
-                IEEvalPrediction(predictions=all_preds, label_ids=all_labels, eval_group=np.array(eval_group))
+                IEEvalPrediction(
+                    predictions=all_preds, label_ids=all_labels, eval_group=np.array(eval_group), dataloader=dataloader
+                )
             )
         else:
             metrics = {}

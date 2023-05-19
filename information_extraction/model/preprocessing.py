@@ -449,6 +449,79 @@ def get_base_config():
     return base_config
 
 
+def convert_example(
+    data: Dict[str, str],
+    tokenizer: Any,
+    max_seq_len: int = 512,
+    multilingual: Optional[bool] = False,
+):
+    """
+    data: {
+        title
+        prompt
+        content
+        result_list
+    }
+    """
+    encoded_inputs = tokenizer(
+        text=[data["prompt"]],
+        text_pair=[data["content"]],
+        truncation=True,
+        max_seq_len=max_seq_len,
+        pad_to_max_seq_len=True,
+        return_attention_mask=True,
+        return_position_ids=True,
+        return_dict=False,
+        return_offsets_mapping=True,
+    )
+    start_ids = [0.0 for x in range(max_seq_len)]
+    end_ids = [0.0 for x in range(max_seq_len)]
+
+    encoded_inputs = encoded_inputs[0]
+    offset_mapping = [list(x) for x in encoded_inputs["offset_mapping"]]
+    bias = 0
+    for index in range(1, len(offset_mapping)):
+        mapping = offset_mapping[index]
+        if mapping[0] == 0 and mapping[1] == 0 and bias == 0:
+            bias = offset_mapping[index - 1][1] + 1  # Includes [SEP] token
+        if mapping[0] == 0 and mapping[1] == 0:
+            continue
+        offset_mapping[index][0] += bias
+        offset_mapping[index][1] += bias
+
+    def map_offset(ori_offset, offset_mapping):
+        """
+        map ori offset to token offset
+        """
+        for index, span in enumerate(offset_mapping):
+            if span[0] <= ori_offset < span[1]:
+                return index
+        return -1
+
+    for item in data["result_list"]:
+        start = map_offset(item["start"] + bias, offset_mapping)
+        end = map_offset(item["end"] - 1 + bias, offset_mapping)
+        start_ids[start] = 1.0
+        end_ids[end] = 1.0
+    if multilingual:
+        tokenized_output = {
+            "input_ids": encoded_inputs["input_ids"],
+            "position_ids": encoded_inputs["position_ids"],
+            "start_positions": start_ids,
+            "end_positions": end_ids,
+        }
+    else:
+        tokenized_output = {
+            "input_ids": encoded_inputs["input_ids"],
+            "token_type_ids": encoded_inputs["token_type_ids"],
+            "position_ids": encoded_inputs["position_ids"],
+            "attention_mask": encoded_inputs["attention_mask"],
+            "start_positions": start_ids,
+            "end_positions": end_ids,
+        }
+    return tokenized_output
+
+
 """
 test = ("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
 s = next(test);s
