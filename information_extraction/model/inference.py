@@ -17,7 +17,7 @@ import pandas as pd
 
 def experiment_inference(
     data_path: str = "../information_extraction/data/testing_data.txt",
-    task_path: str = "../information_extraction/results/checkpoint/model_best",
+    task_path: str = "../information_extraction/results/checkpoint",
     schema: List[str] = ["精神慰撫金額", "醫療費用", "薪資收入"],
     do_compute_auc: bool = True,
     evaluation_method: str = "simple",

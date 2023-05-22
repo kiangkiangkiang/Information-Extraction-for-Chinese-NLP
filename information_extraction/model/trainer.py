@@ -64,6 +64,9 @@ class IETrainer(Trainer):
         self.do_experiment = do_experiment
         self.mlflow_training_step = mlflow_training_step
         self.mlflow_eval_step = mlflow_eval_step
+        self.linear_start = nn.Linear(384, 1)
+        self.linear_end = nn.Linear(384, 1)
+        self.sigmoid = nn.Sigmoid()
         super().__init__(
             model,
             criterion,
@@ -107,27 +110,32 @@ class IETrainer(Trainer):
         if is_test_full_content:
             paddle.set_device(self.args.device)
             # model.config.hidden_size
-            model_max_len = 2048
-            breakpoint()
+            model_max_len = 512
             model_input = {}
-            counter = 0
             last_sequence_output = []
 
             # model loop
             while inputs["input_ids"].shape[1] > 0:
-                if inputs["input_ids"][0, 0] == 0:  # start with padding
-                    break
                 for key in inputs:
                     model_input[key] = inputs[key][:, :model_max_len]
                     inputs[key] = inputs[key][:, model_max_len:]
                 sequence_output, _ = model(**model_input)
                 # output[0] = 1 * max_len * hidden_size, outputs[1] = 1 * hidden_size
                 if len(last_sequence_output) > 0:
-                    last_sequence_output += sequence_output
+                    last_sequence_output = paddle.concat([last_sequence_output, sequence_output], axis=1)
                 else:
                     last_sequence_output = sequence_output
-                counter += 1
-                breakpoint()
+
+            # breakpoint()
+            start_logits = self.linear_start(last_sequence_output)
+            start_logits = paddle.squeeze(start_logits, -1)
+            start_prob = self.sigmoid(start_logits)
+            end_logits = self.linear_end(last_sequence_output)
+            end_logits = paddle.squeeze(end_logits, -1)
+            end_prob = self.sigmoid(end_logits)
+            outputs = (start_prob, end_prob)
+
+            # breakpoint()
         else:
             outputs = model(**inputs)
 

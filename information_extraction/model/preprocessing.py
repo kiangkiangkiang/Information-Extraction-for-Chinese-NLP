@@ -361,7 +361,7 @@ def convert_to_full_data_format(
     2. [DONE] tokenize each chunk
     3. [DONE] concate all chunk
     4. [DONE] adjust index by chunk (only for loss, model will not input)
-    5. make label from adjust_index mapping
+    5. [DONE] make label from adjust_index mapping
     """
 
     max_content_len = (
@@ -386,16 +386,6 @@ def convert_to_full_data_format(
 
         start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
 
-        # adjust offset_mapping
-        adjusted_offset_mapping, drift = drift_offsets_mapping(offset_mapping=encoded_inputs["offset_mapping"])
-
-        # align original index to tokenized (offset_mapping) index
-        for item in data["result_list"]:
-            aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
-            aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
-            start_ids[aligned_start_index] = 1.0
-            end_ids[aligned_end_index] = 1.0
-
         # 3. concate all chunk
         for key in tmp_inputs:
             encoded_inputs[key].extend(tmp_inputs[key])
@@ -404,19 +394,22 @@ def convert_to_full_data_format(
 
     # only for debug (can be delete)
 
-    logger.debug(f"len(content) after tokenize = {len(encoded_inputs['input_ids'])}")
+    # logger.debug(f"len(content) after tokenize = {len(encoded_inputs['input_ids'])}")
 
     # 4. adjust index by chunk (only for loss, model will not input)
     start_ids, end_ids = map(lambda x: x * len(encoded_inputs["input_ids"]), ([0.0], [0.0]))
 
     # 4.1 adjust label index
     adjusted_offset_mapping = []
-    drift = 0
+    # drift = []
     accumulate_chunk_drift = 0
+    last_chunk_len = 0
+
     while encoded_inputs["offset_mapping"]:
-        current_mapping, tmp = drift_offsets_mapping(encoded_inputs["offset_mapping"][:max_seq_len])
+        # current_mapping, tmp = drift_offsets_mapping(encoded_inputs["offset_mapping"][:max_seq_len])
+        current_mapping = [list(x) for x in encoded_inputs["offset_mapping"][:max_seq_len]]
         # logger.debug(f"tmp drift = {current_mapping}")
-        drift += tmp
+        # drift.append(tmp)
         if adjusted_offset_mapping:
             # 4.2 adjust index for chunk
             chunk_drift = 0
@@ -430,19 +423,20 @@ def convert_to_full_data_format(
 
         adjusted_offset_mapping.extend(current_mapping)
         encoded_inputs["offset_mapping"] = encoded_inputs["offset_mapping"][max_seq_len:]
-        accumulate_chunk_drift += max_seq_len
-    breakpoint()
-    # 5. make label from adjust_index mapping
-    print(123)
+        accumulate_chunk_drift += max_content_len
+
     for item in data["result_list"]:
-        aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
-        aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
+
+        aligned_start_index = align_to_offset_mapping(item["start"], adjusted_offset_mapping)
+        aligned_end_index = align_to_offset_mapping(item["end"], adjusted_offset_mapping)
         adjust_ans = "".join(
             tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][aligned_start_index:aligned_end_index])
         )
-        logger.debug(f"After adjust answer: {adjust_ans}")
-        logger.debug(f"True answer: {item['text']}")
-        assert adjust_ans == item["text"], "Convert result index error in convert_to_full_data_format."
+        # "".join(tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][:]))
+        if adjust_ans != item["text"]:
+            logger.error(f"After adjust answer: {adjust_ans}, True answer: {item['text']}")
+            breakpoint()
+        # assert adjust_ans == item["text"], "Convert result index error in convert_to_full_data_format."
         # logger.debug(f"check aligned_start_index, {encoded_inputs['input_ids'][aligned_start_index]}")
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
@@ -543,3 +537,9 @@ s["content"][431:437]
 len(s["content"])
 s["content"][431:437]
 """
+
+
+a = "個多月折磨，堪認受創嚴重，復參酌游佳笙為國中學歷之職業工人（見調解卷第45頁交通事故談話紀錄表），冠陞公司資本總額1,200萬元（見本院卷第93頁公司變更登記表），衡酌兩造身分、財產狀況等一切情狀，認原告得請求之非財產"
+b = "個多月折磨，堪認受創嚴重，復參酌游佳笙為國中學歷之職業工人（見調解卷第45頁交通事故談話紀錄表），冠陞公司資本總額1,200萬元（見本院卷第93頁公司變更登記表），衡酌兩造身分、財產狀況等一切情狀，認原告得請求之非財產上損害，以20萬元為適當。㈥綜上，原告得請求被告賠償醫療費用15萬2,330元、看護費用28萬4,700元、停車費、車資及營養品費用2萬3,474元、薪資損失38萬1,500元、慰撫金"
+len(a)
+len(b)

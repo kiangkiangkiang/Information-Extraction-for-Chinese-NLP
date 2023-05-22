@@ -130,6 +130,7 @@ def load_model_and_tokenizer(model_name_or_path: str):
     model = UIEX.from_pretrained(model_name_or_path)
 
     """
+
     """
     tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
 
