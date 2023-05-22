@@ -120,9 +120,8 @@ class IETrainer(Trainer):
                 for key in inputs:
                     model_input[key] = inputs[key][:, :model_max_len]
                     inputs[key] = inputs[key][:, model_max_len:]
-                sequence_output, _ = model(
-                    **model_input
-                )  # output[0] = 1 * max_len * hidden_size, outputs[1] = 1 * hidden_size
+                sequence_output, _ = model(**model_input)
+                # output[0] = 1 * max_len * hidden_size, outputs[1] = 1 * hidden_size
                 if len(last_sequence_output) > 0:
                     last_sequence_output += sequence_output
                 else:
@@ -132,6 +131,7 @@ class IETrainer(Trainer):
         else:
             outputs = model(**inputs)
 
+        # for group evaluation
         min_word = self.__get_min_word_in_ner_type()
         group = self.__get_eval_group(min_word, inputs)
 

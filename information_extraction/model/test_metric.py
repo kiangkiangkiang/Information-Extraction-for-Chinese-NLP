@@ -57,16 +57,18 @@ class SpanEvaluator(Metric):
         label_set = get_span(label_start_ids, label_end_ids)
 
         # Debug
-        if pred_set == label_set:
-            logger.info(f"Correct in: {pred_set} == {label_set}")
-        else:
-            logger.error(f"Error in: {pred_set} != {label_set}")
+        if len(pred_set) > 0 or len(label_set) > 0:
+            if pred_set == label_set:
+                logger.info(f"Correct in: predict: {pred_set} == true: {label_set}")
+            else:
+                logger.error(f"Error in: predict: {pred_set} != true: {label_set}")
 
         num_correct = len(pred_set & label_set)
         num_infer = len(pred_set)
         # For the case of overlapping in the same category,
         # length of label_start_ids and label_end_ids is not equal
         num_label = max(len(label_start_ids), len(label_end_ids))
+        logger.debug(f"(num_correct, num_infer, num_label): {(num_correct, num_infer, num_label)}")
         return (num_correct, num_infer, num_label)
 
     def accumulate(self):
