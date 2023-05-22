@@ -35,6 +35,9 @@ class SpanEvaluator(Metric):
             num_correct_spans += _correct
             num_infer_spans += _infer
             num_label_spans += _label
+            logger.debug(
+                f"(num_correct, num_infer, num_label): {(num_correct_spans, num_infer_spans, num_label_spans)}"
+            )
         return num_correct_spans, num_infer_spans, num_label_spans
 
     def update(self, num_correct_spans, num_infer_spans, num_label_spans):
@@ -68,7 +71,6 @@ class SpanEvaluator(Metric):
         # For the case of overlapping in the same category,
         # length of label_start_ids and label_end_ids is not equal
         num_label = max(len(label_start_ids), len(label_end_ids))
-        logger.debug(f"(num_correct, num_infer, num_label): {(num_correct, num_infer, num_label)}")
         return (num_correct, num_infer, num_label)
 
     def accumulate(self):
