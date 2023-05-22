@@ -106,7 +106,7 @@ class IETrainer(Trainer):
             labels = None
 
         # Modification
-        is_test_full_content = False
+        is_test_full_content = True
         if is_test_full_content:
             paddle.set_device(self.args.device)
             # model.config.hidden_size

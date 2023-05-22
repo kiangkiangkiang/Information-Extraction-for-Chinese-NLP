@@ -1,8 +1,12 @@
+from preprocessing import *
 from paddlenlp.utils.log import logger
 from paddlenlp import Taskflow
 import json
-from typing import List
+from typing import Optional, List, Any, Callable, Dict, Union, Tuple, Literal
 import pandas as pd
+from callbacks import load_model_and_tokenizer
+import paddle.nn.functional as F
+
 
 """ TODO
 切文本：
@@ -12,6 +16,209 @@ import pandas as pd
 的 windows，然後無腦 concate再一起當作原文本來跑模型看看。
 
 
+"""
+
+
+from functools import partial
+
+import paddle
+
+from paddlenlp.data import DataCollatorWithPadding
+from paddlenlp.datasets import MapDataset, load_dataset
+from paddlenlp.metrics import SpanEvaluator
+from paddlenlp.transformers import UIE, UIEM, AutoTokenizer
+from paddlenlp.utils.log import logger
+
+
+'''
+def evaluate(model, metric, data_loader, multilingual=False):
+    """
+    Given a dataset, it evals model and computes the metric.
+    Args:
+        model(obj:`paddle.nn.Layer`): A model to classify texts.
+        metric(obj:`paddle.metric.Metric`): The evaluation metric.
+        data_loader(obj:`paddle.io.DataLoader`): The dataset loader which generates batches.
+        multilingual(bool): Whether is the multilingual model.
+    """
+    model.eval()
+    metric.reset()
+    for batch in data_loader:
+        if multilingual:
+            start_prob, end_prob = model(batch["input_ids"], batch["position_ids"])
+        else:
+            start_prob, end_prob = model(
+                batch["input_ids"], batch["token_type_ids"], batch["position_ids"], batch["attention_mask"]
+            )
+
+        start_ids = paddle.cast(batch["start_positions"], "float32")
+        end_ids = paddle.cast(batch["end_positions"], "float32")
+        num_correct, num_infer, num_label = metric.compute(start_prob, end_prob, start_ids, end_ids)
+        metric.update(num_correct, num_infer, num_label)
+    precision, recall, f1 = metric.accumulate()
+    model.train()
+    return precision, recall, f1
+
+
+def do_eval():
+    paddle.set_device(args.device)
+
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    if args.multilingual:
+        model = UIEM.from_pretrained(args.model_path)
+    else:
+        model = UIE.from_pretrained(args.model_path)
+
+    test_ds = load_dataset(reader, data_path=args.test_path, max_seq_len=args.max_seq_len, lazy=False)
+    class_dict = {}
+    relation_data = []
+    if args.debug:
+        for data in test_ds:
+            class_name = unify_prompt_name(data["prompt"])
+            # Only positive examples are evaluated in debug mode
+            if len(data["result_list"]) != 0:
+                p = "的" if args.schema_lang == "ch" else " of "
+                if p not in data["prompt"]:
+                    class_dict.setdefault(class_name, []).append(data)
+                else:
+                    relation_data.append((data["prompt"], data))
+
+        relation_type_dict = get_relation_type_dict(relation_data, schema_lang=args.schema_lang)
+    else:
+        class_dict["all_classes"] = test_ds
+
+    trans_fn = partial(
+        convert_example, tokenizer=tokenizer, max_seq_len=args.max_seq_len, multilingual=args.multilingual
+    )
+
+    for key in class_dict.keys():
+        if args.debug:
+            test_ds = MapDataset(class_dict[key])
+        else:
+            test_ds = class_dict[key]
+        test_ds = test_ds.map(trans_fn)
+
+        data_collator = DataCollatorWithPadding(tokenizer)
+
+        test_data_loader = create_data_loader(test_ds, mode="test", batch_size=args.batch_size, trans_fn=data_collator)
+
+        metric = SpanEvaluator()
+        precision, recall, f1 = evaluate(model, metric, test_data_loader, args.multilingual)
+        logger.info("-----------------------------")
+        logger.info("Class Name: %s" % key)
+        logger.info("Evaluation Precision: %.5f | Recall: %.5f | F1: %.5f" % (precision, recall, f1))
+
+    if args.debug and len(relation_type_dict.keys()) != 0:
+        for key in relation_type_dict.keys():
+            test_ds = MapDataset(relation_type_dict[key])
+            test_ds = test_ds.map(trans_fn)
+            test_data_loader = create_data_loader(
+                test_ds, mode="test", batch_size=args.batch_size, trans_fn=data_collator
+            )
+
+            metric = SpanEvaluator()
+            precision, recall, f1 = evaluate(model, metric, test_data_loader)
+            logger.info("-----------------------------")
+            if args.schema_lang == "ch":
+                logger.info("Class Name: X的%s" % key)
+            else:
+                logger.info("Class Name: %s of X" % key)
+            logger.info("Evaluation Precision: %.5f | Recall: %.5f | F1: %.5f" % (precision, recall, f1))
+'''
+
+
+@paddle.no_grad()
+def do_inference(
+    model_path: str,
+    data_path: str,
+    schema: List[str],
+    max_seq_len: int = 512,
+    batch_size: int = 16,
+    device: str = "cpu",
+    model_name_or_path: str = "uie-base",
+    export_model_dir: Optional[str] = None,
+    multilingual: Optional[bool] = False,
+    read_data_method: Optional[Literal["chunk", "full"]] = "chunk",
+    convert_and_tokenize_function: Optional[
+        Callable[[Dict[str, str], Any, int], Dict[str, Union[str, float]]]
+    ] = convert_to_uie_format,
+):
+    # TODO detect device type
+
+    paddle.set_device(device)
+    model, tokenizer = load_model_and_tokenizer(model_path)
+
+    if read_data_method not in ["chunk", "full"]:
+        logger.warning(
+            f"read_data_method must be 'chunk' or 'full', {read_data_method} is not support. \
+            Automatically change read_data_method to 'chunk'."
+        )
+        read_data_method = "chunk"
+
+    if read_data_method == "chunk":
+        read_data = read_data_by_chunk
+        convert_and_tokenize_function = convert_to_uie_format
+        # convert_and_tokenize_function = convert_example
+    else:
+        read_data = read_full_data
+        convert_and_tokenize_function = convert_to_full_data_format
+
+    test_ds = load_dataset(read_data, data_path=data_path, max_seq_len=max_seq_len, lazy=False)
+
+    # TODO convert data by schema
+    convert_function = partial(
+        convert_and_tokenize_function,
+        tokenizer=tokenizer,
+        max_seq_len=max_seq_len,
+        multilingual=multilingual,
+    )
+
+    test_ds = test_ds.map(convert_function)
+    data_collator = DataCollatorWithPadding(tokenizer)
+    test_data_loader = create_data_loader(test_ds, batch_size=batch_size, trans_fn=data_collator)
+    for inputs in test_data_loader:
+        labels = (inputs.pop("start_positions"), inputs.pop("end_positions"))
+        outputs = model(**inputs)
+        outputs_prob = (F.softmax(output, axis=1) for output in (outputs[0], outputs[1]))
+        breakpoint()
+        for l, start, end in zip(*np.where(outputs_prob > 0.0)):
+            breakpoint()
+            """ 
+            ent_prob = entity_probs[l, start, end]
+            start, end = (offset_mapping[start][0], offset_mapping[end][-1])
+            ent = {
+                "text": text[start:end],
+                "type": label_maps["id2entity"][str(l)],
+                "start_index": start,
+                "probability": ent_prob,
+            }
+            ent_list.append(ent)
+            """
+
+        # batch_ent_results.append(ent_list)
+
+        breakpoint()
+        print(123)
+
+
+"""
+if __name__ == "__main__":
+    # yapf: disable
+    
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--model_path", type=str, default=None, help="The path of saved model that you want to load.")
+    parser.add_argument("--test_path", type=str, default=None, help="The path of test set.")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size per GPU/CPU/NPU for training.")
+    parser.add_argument("--device", type=str, default="gpu", choices=["gpu", "cpu", "npu"], help="Device selected for evaluate.")
+    parser.add_argument("--max_seq_len", type=int, default=512, help="The maximum total input sequence length after tokenization.")
+    parser.add_argument("--debug", action='store_true', help="Precision, recall and F1 score are calculated for each class separately if this option is enabled.")
+    parser.add_argument("--multilingual", action='store_true', help="Whether is the multilingual model.")
+    parser.add_argument("--schema_lang", choices=["ch", "en"], default="ch", help="Select the language type for schema.")
+
+    args = parser.parse_args()
+    # yapf: enable
+
+    do_eval()
 """
 
 
@@ -125,7 +332,16 @@ def filter_result(results, method="max_prob", threshold=0.5):
 
 
 if __name__ == "__main__":
-    experiment_inference()
+    experiment = True
+    if experiment:
+        experiment_inference()
+    else:
+        do_inference(
+            device="gpu",
+            model_path="../information_extraction/results/checkpoint",
+            data_path="../information_extraction/data/testing_data.txt",
+        )
+
 
 """
 a = [

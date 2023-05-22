@@ -81,6 +81,47 @@ class UIE(ErniePretrainedModel):
         return start_prob, end_prob
 
 
+class IE_Ernie(ErniePretrainedModel):
+    """
+    Ernie Model with two linear layer on top of the hidden-states
+    output to compute `start_prob` and `end_prob`,
+    designed for Universal Information Extraction.
+    Args:
+        config (:class:`ErnieConfig`):
+            An instance of ErnieConfig used to construct UIE
+    """
+
+    def __init__(self, config: ErnieConfig):
+        super(IE_Ernie, self).__init__(config)
+        self.ernie = ErnieModel(config)
+        self.linear_start = nn.Linear(config.hidden_size, 1)
+        self.linear_end = nn.Linear(config.hidden_size, 1)
+        self.sigmoid = nn.Sigmoid()
+        self.input_spec = [
+            InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
+        ]
+
+    def forward(
+        self,
+        input_ids: Optional[Tensor] = None,
+        token_type_ids: Optional[Tensor] = None,
+        position_ids: Optional[Tensor] = None,
+        attention_mask: Optional[Tensor] = None,
+        inputs_embeds: Optional[Tensor] = None,
+    ):
+
+        return self.ernie(
+            input_ids=input_ids,
+            token_type_ids=token_type_ids,
+            position_ids=position_ids,
+            attention_mask=attention_mask,
+            inputs_embeds=inputs_embeds,
+        )
+
+
 class IE_XLNet(XLNetPretrainedModel):
     def __init__(self, config: XLNetConfig):
         super(IE_XLNet, self).__init__(config)

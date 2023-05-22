@@ -13,6 +13,7 @@ parent = os.path.dirname(current)
 sys.path.append(parent)
 
 from paddlenlp.utils.log import logger
+from paddle.io import DistributedBatchSampler, BatchSampler, DataLoader
 from utils.exceptions import DataError, PreprocessingError
 from config import BaseConfig
 
@@ -139,7 +140,6 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
-                do_down_sampling = False
 
                 # pop result in subcontent
                 while len(result_list) > 0:
@@ -368,14 +368,44 @@ def convert_to_full_data_format(
         max_seq_len - len(data["prompt"]) - 3
     )  # 3 means [CLS] [SEP] [SEP] in [CLS] prompt [SEP] content [SEP]
     encoded_inputs = defaultdict(list)
+    result_list = data["result_list"]
+    accumulate_token = 0
+    start_positions = []
+    end_positions = []
     while data["content"]:
         # 1. split chunk by max_content_len
-        current_content = data["content"][:max_content_len]
+        current_content_result = []
+        # pop result in subcontent
+        while len(result_list) > 0:
+            if (
+                result_list[0]["start"] > result_list[0]["end"]
+                or result_list[0]["end"] - result_list[0]["start"] > max_content_len
+            ):
+                raise DataError(
+                    f"Error in result list. Invalid start or end location\
+                        (start: {result_list[0]['start']}, end: {result_list[0]['end']})."
+                )
+            if result_list[0]["start"] < max_content_len:
+                if result_list[0]["end"] > max_content_len:
+                    # Result-Cross case: using dynamic adjust max_content_len to escape the problem.
+                    max_content_len = result_list[0]["start"]
+                    result_list[0]["start"] -= max_content_len
+                    result_list[0]["end"] -= max_content_len
+                    break
+                else:
+                    current_content_result.append(result_list.pop(0))
+                    if result_list:
+                        result_list[0]["start"] -= accumulate_token
+                        result_list[0]["end"] -= accumulate_token
+            else:
+                result_list[0]["start"] -= max_content_len
+                result_list[0]["end"] -= max_content_len
+                break  # result list is sorted by start
 
         # 2. tokenize each chunk
         tmp_inputs = tokenizer(
             text=[data["prompt"]],
-            text_pair=[current_content],
+            text_pair=[data["content"][:max_content_len]],
             max_seq_len=max_seq_len,
             pad_to_max_seq_len=True,
             return_attention_mask=True,
@@ -384,13 +414,35 @@ def convert_to_full_data_format(
             return_offsets_mapping=True,
         )[0]
 
-        start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
-
         # 3. concate all chunk
         for key in tmp_inputs:
             encoded_inputs[key].extend(tmp_inputs[key])
 
+        accumulate_token += max_content_len
         data["content"] = data["content"][max_content_len:]
+
+        start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
+
+        if current_content_result:
+            # adjust offset_mapping
+            adjusted_offset_mapping, drift = drift_offsets_mapping(offset_mapping=tmp_inputs["offset_mapping"])
+
+            # align original index to tokenized (offset_mapping) index
+            for item in current_content_result:
+                aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
+                aligned_end_index = align_to_offset_mapping(item["end"] + drift, adjusted_offset_mapping)
+                adjust_ans = "".join(
+                    tokenizer.convert_ids_to_tokens(tmp_inputs["input_ids"][aligned_start_index:aligned_end_index])
+                )
+                # "".join(tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][:]))
+                if adjust_ans != item["text"]:
+                    logger.error(f"After adjust answer: {adjust_ans}, True answer: {item['text']}")
+                start_ids[aligned_start_index] = 1.0
+                end_ids[aligned_end_index] = 1.0
+        start_positions.extend(start_ids)
+        end_positions.extend(end_ids)
+
+    """
 
     # only for debug (can be delete)
 
@@ -440,14 +492,15 @@ def convert_to_full_data_format(
         # logger.debug(f"check aligned_start_index, {encoded_inputs['input_ids'][aligned_start_index]}")
         start_ids[aligned_start_index] = 1.0
         end_ids[aligned_end_index] = 1.0
+    """
 
     return {
         "input_ids": encoded_inputs["input_ids"],
         "token_type_ids": encoded_inputs["token_type_ids"],
         "position_ids": encoded_inputs["position_ids"],
         "attention_mask": encoded_inputs["attention_mask"],
-        "start_positions": start_ids,
-        "end_positions": end_ids,
+        "start_positions": start_positions,
+        "end_positions": end_positions,
     }
 
 
@@ -528,6 +581,24 @@ def convert_example(
     return tokenized_output
 
 
+def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
+    """
+    Create dataloader.
+    Args:
+        dataset(obj:`paddle.io.Dataset`): Dataset instance.
+        mode(obj:`str`, optional, defaults to obj:`train`): If mode is 'train', it will shuffle the dataset randomly.
+        batch_size(obj:`int`, optional, defaults to 1): The sample number of a mini-batch.
+        trans_fn(obj:`callable`, optional, defaults to `None`): function to convert a data sample to input ids, etc.
+    Returns:
+        dataloader(obj:`paddle.io.DataLoader`): The dataloader which generates batches.
+    """
+    if trans_fn:
+        dataset = dataset.map(trans_fn)
+    sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    dataloader = DataLoader(dataset, batch_sampler=sampler, return_list=True)
+    return dataloader
+
+
 """
 test = ("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
 s = next(test);s
@@ -537,9 +608,3 @@ s["content"][431:437]
 len(s["content"])
 s["content"][431:437]
 """
-
-
-a = "個多月折磨，堪認受創嚴重，復參酌游佳笙為國中學歷之職業工人（見調解卷第45頁交通事故談話紀錄表），冠陞公司資本總額1,200萬元（見本院卷第93頁公司變更登記表），衡酌兩造身分、財產狀況等一切情狀，認原告得請求之非財產"
-b = "個多月折磨，堪認受創嚴重，復參酌游佳笙為國中學歷之職業工人（見調解卷第45頁交通事故談話紀錄表），冠陞公司資本總額1,200萬元（見本院卷第93頁公司變更登記表），衡酌兩造身分、財產狀況等一切情狀，認原告得請求之非財產上損害，以20萬元為適當。㈥綜上，原告得請求被告賠償醫療費用15萬2,330元、看護費用28萬4,700元、停車費、車資及營養品費用2萬3,474元、薪資損失38萬1,500元、慰撫金"
-len(a)
-len(b)
