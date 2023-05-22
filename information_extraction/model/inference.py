@@ -283,12 +283,14 @@ def experiment_inference(
 
                             else:
                                 if ground_text == infer_text:
-                                    logger.info(f"Correct in {json_line['prompt']}, {ground_text} == {infer_text}.")
+                                    logger.info(
+                                        f"Correct in {json_line['prompt']}, 'True': {ground_text} == 'Infer': {infer_text}."
+                                    )
                                     evaluation_result[json_line["prompt"]]["Number of Correct"] += 1
                                 else:
                                     # wrong
                                     logger.error(
-                                        f"Fail!! Incorrect in {json_line['prompt']}, {ground_text} != {infer_text}."
+                                        f"Fail!! Incorrect in {json_line['prompt']}, 'True': {ground_text} != 'Infer': {infer_text}."
                                     )
                                     # logger.error(f"content={json_line['content'].strip()}")
                         else:
