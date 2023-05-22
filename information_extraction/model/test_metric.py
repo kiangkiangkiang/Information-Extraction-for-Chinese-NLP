@@ -15,7 +15,7 @@ class SpanEvaluator(Metric):
         self.num_correct_spans = 0
         self.limit = limit
 
-    def compute(self, start_probs, end_probs, gold_start_ids, gold_end_ids, data):
+    def compute(self, start_probs, end_probs, gold_start_ids, gold_end_ids):
         """
         Computes the precision, recall and F1-score for span detection.
         """
@@ -26,10 +26,9 @@ class SpanEvaluator(Metric):
         num_correct_spans = 0
         num_infer_spans = 0
         num_label_spans = 0
-        for predict_start_ids, predict_end_ids, label_start_ids, label_end_ids, short_data in zip(
-            pred_start_ids, pred_end_ids, gold_start_ids, gold_end_ids, data
+        for predict_start_ids, predict_end_ids, label_start_ids, label_end_ids in zip(
+            pred_start_ids, pred_end_ids, gold_start_ids, gold_end_ids
         ):
-            self.data = short_data
             [_correct, _infer, _label] = self.eval_span(
                 predict_start_ids, predict_end_ids, label_start_ids, label_end_ids
             )
@@ -58,15 +57,8 @@ class SpanEvaluator(Metric):
         label_set = get_span(label_start_ids, label_end_ids)
 
         logger.debug(f"pred_set: {pred_set}")
-        if len(pred_set) > 0:
-            for each_set in pred_set:
-                logger.debug(f"pred_set text: {self.data['content'][each_set[0]: each_set[1]]}")
         logger.debug(f"label_set: {label_set}")
-        if len(label_set) > 0:
-            for each_set in label_set:
-                logger.debug(f"label_set text: {self.data['content'][each_set[0]: each_set[1]]}")
 
-        breakpoint()
         num_correct = len(pred_set & label_set)
         num_infer = len(pred_set)
         # For the case of overlapping in the same category,

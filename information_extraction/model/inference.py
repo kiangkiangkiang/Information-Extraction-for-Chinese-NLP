@@ -43,7 +43,7 @@ def experiment_inference(
 
             inference_result = my_ie(json_line["content"].strip())
             result_in_this_prompt = inference_result[0].get(json_line["prompt"])
-            final_result = filter_result(result_in_this_prompt)
+            final_result = filter_result(result_in_this_prompt, "threshold", 0.6)
 
             # logger.debug(f"inference result = {final_result}")
             # logger.debug(f"ground true = {json_line['result_list']}")
@@ -71,6 +71,8 @@ def experiment_inference(
                                 logger.debug(f"Ground true has several answers!!!! Accumulate: {several_text}")
                                 logger.debug(f"Several text in {json_line['prompt']}.")
                                 logger.debug(f"Several sample: {json_line['result_list']}.")
+                                # if json_line["prompt"] == "精神慰撫金額":
+                                #     logger.debug(f"Several sample: {json_line['content'].strip()}.")
 
                             else:
                                 if ground_text == infer_text:
@@ -81,13 +83,13 @@ def experiment_inference(
                                     logger.error(
                                         f"Fail!! Incorrect in {json_line['prompt']}, {ground_text} != {infer_text}."
                                     )
-                                    logger.error(f"content={json_line['content'].strip()}")
+                                    # logger.error(f"content={json_line['content'].strip()}")
                         else:
                             # wrong case [...] -> [] or [] -> [...]
                             logger.error(
                                 f"Fail!! Incorrect in {json_line['prompt']}, True: {json_line['result_list']} != Inf: {final_result}."
                             )
-                            logger.error(f"content={json_line['content'].strip()}")
+                            # logger.error(f"content={json_line['content'].strip()}")
 
                 else:
                     # not implement
@@ -109,11 +111,12 @@ def experiment_inference(
     logger.info("Done")
 
 
-def filter_result(results, method="max_prob", threshold=0.7):
+def filter_result(results, method="max_prob", threshold=0.5):
+    # format of results: [{'text': '200,000元', 'start': 470, 'end': 478, 'probability': 0.8655009269714355}]
     if results:
         results = sorted(results, key=lambda x: x["probability"], reverse=True)
         if method == "max_prob":
-            return [results[0]]
+            return [results[0]] if results[0]["probability"] > threshold else []
         elif method == "threshold":
             results = list(filter(lambda x: x["probability"] > threshold, results))
             return results
