@@ -24,7 +24,7 @@ class SpanEvaluator(Metric):
         gold_start_ids = get_bool_ids_greater_than(gold_start_ids.tolist(), self.limit)
         gold_end_ids = get_bool_ids_greater_than(gold_end_ids.tolist(), self.limit)
         num_correct_spans = 0
-        num_infer_spans = 0
+        num_ffinfer_spans = 0
         num_label_spans = 0
         for predict_start_ids, predict_end_ids, label_start_ids, label_end_ids in zip(
             pred_start_ids, pred_end_ids, gold_start_ids, gold_end_ids
