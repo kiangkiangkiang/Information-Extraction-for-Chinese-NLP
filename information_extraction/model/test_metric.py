@@ -35,9 +35,10 @@ class SpanEvaluator(Metric):
             num_correct_spans += _correct
             num_infer_spans += _infer
             num_label_spans += _label
-            logger.debug(
-                f"(num_correct, num_infer, num_label): {(num_correct_spans, num_infer_spans, num_label_spans)}"
-            )
+            if _correct > 0 or _infer > 0:
+                logger.debug(
+                    f"(num_correct, num_infer, num_label): {(num_correct_spans, num_infer_spans, num_label_spans)}"
+                )
         return num_correct_spans, num_infer_spans, num_label_spans
 
     def update(self, num_correct_spans, num_infer_spans, num_label_spans):
