@@ -56,8 +56,11 @@ class SpanEvaluator(Metric):
         pred_set = get_span(predict_start_ids, predict_end_ids)
         label_set = get_span(label_start_ids, label_end_ids)
 
-        logger.debug(f"pred_set: {pred_set}")
-        logger.debug(f"label_set: {label_set}")
+        # Debug
+        if pred_set == label_set:
+            logger.info(f"Correct in: {pred_set} == {label_set}")
+        else:
+            logger.error(f"Error in: {pred_set} != {label_set}")
 
         num_correct = len(pred_set & label_set)
         num_infer = len(pred_set)

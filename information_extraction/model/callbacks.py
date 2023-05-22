@@ -2,9 +2,9 @@ import os
 import sys
 from typing import Optional
 
-from paddlenlp.metrics import SpanEvaluator
+# from paddlenlp.metrics import SpanEvaluator
 
-# from test_metric import SpanEvaluator
+from test_metric import SpanEvaluator
 
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
