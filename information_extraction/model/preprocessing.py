@@ -384,6 +384,18 @@ def convert_to_full_data_format(
             return_offsets_mapping=True,
         )[0]
 
+        start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
+
+        # adjust offset_mapping
+        adjusted_offset_mapping, drift = drift_offsets_mapping(offset_mapping=encoded_inputs["offset_mapping"])
+
+        # align original index to tokenized (offset_mapping) index
+        for item in data["result_list"]:
+            aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
+            aligned_end_index = align_to_offset_mapping(item["end"] - 1 + drift, adjusted_offset_mapping)
+            start_ids[aligned_start_index] = 1.0
+            end_ids[aligned_end_index] = 1.0
+
         # 3. concate all chunk
         for key in tmp_inputs:
             encoded_inputs[key].extend(tmp_inputs[key])
