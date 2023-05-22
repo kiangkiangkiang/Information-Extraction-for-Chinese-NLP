@@ -45,6 +45,7 @@ def SpanEvaluator_metrics(result):
 
     def compute_metrics(predictions, label_ids, descriptions=""):
         # test metrics
+        logger.debug(f"Now eval: {descriptions}")
         start_prob, end_prob = predictions
         start_ids, end_ids = label_ids
         metric.reset()
@@ -103,23 +104,26 @@ def load_model_and_tokenizer(model_name_or_path: str):
     # from pretrained model
     model = UIE.from_pretrained(model_name_or_path)
 
-    """
     # test for xlnet (fail)
+    """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_XLNet.from_pretrained(model_name_or_path)
-    """
-    """
     
+    """
+
     # test for bigbird
+    """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = IE_BigBird.from_pretrained(model_name_or_path)
     breakpoint()
-    
+    """
 
+    """
     tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
     model = ErnieModel.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
-    
+    """
 
+    """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
@@ -127,10 +131,10 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     """
     """
-    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
 
     # from pretrained model
-    model = UIEM.from_pretrained(model_name_or_path)
+    model = ErnieModel.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
     """
 
     return model, tokenizer
