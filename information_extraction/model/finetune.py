@@ -191,7 +191,7 @@ def finetune(
         # You can also load from certain checkpoint
         # trainer.load_state_dict_from_checkpoint("/path/to/checkpoint/")
         if export_model_dir is None:
-            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir}export as default.")
+            logger.warning(f"Missing export_model_dir path. Using {training_args.output_dir} as default.")
             export_model_dir = os.path.join(training_args.output_dir)
         try:
             export_model(model=trainer.model, input_spec=trainer.model.input_spec, path=export_model_dir)
