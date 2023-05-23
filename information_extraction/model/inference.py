@@ -133,7 +133,7 @@ def preprocess_inference_data(
     read_data_method: str = "chunk",
     max_seq_len: int = 512,
     schema: List[str] = ["精神慰撫金", "醫療費", "薪資收入"],
-) -> :
+):
     if read_data_method == "chunk":
         read_data = read_data_by_chunk
         convert_and_tokenize_function = convert_to_uie_format
