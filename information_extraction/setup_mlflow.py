@@ -5,7 +5,7 @@ from paddle import nn, cast
 import pandas as pd
 
 # from paddlenlp.metrics import SpanEvaluator
-from .model.test_metric import SpanEvaluator
+from model.test_metric import SpanEvaluator
 import numpy as np
 import os
 
