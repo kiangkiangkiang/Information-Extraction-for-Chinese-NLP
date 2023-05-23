@@ -133,7 +133,7 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     """
 
-    tokenizer = ErnieTokenizer.from_pretrained("ernie-3.0-base-zh ")
+    tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-base-zh")
 
     # from pretrained model
     model = IE_Ernie.from_pretrained("ernie-3.0-base-zh")
