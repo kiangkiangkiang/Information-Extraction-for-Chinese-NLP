@@ -3,7 +3,9 @@ import sys
 from paddlenlp.utils.log import logger
 from paddle import nn, cast
 import pandas as pd
-from paddlenlp.metrics import SpanEvaluator
+
+# from paddlenlp.metrics import SpanEvaluator
+from .model.test_metric import SpanEvaluator
 import numpy as np
 import os
 
