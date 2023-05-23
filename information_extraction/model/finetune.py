@@ -77,7 +77,7 @@ def finetune(
         read_data = read_full_data
         convert_and_tokenize_function = convert_to_full_data_format
 
-    set_device(training_args.device)
+    set_device("cpu")
     # Log on each process the small summary:
     logger.info(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, world_size: {training_args.world_size}, "
