@@ -8,7 +8,8 @@ from test_metric import SpanEvaluator
 
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
-from paddlenlp.transformers import AutoTokenizer
+from paddlenlp.transformers import AutoTokenizer, ErnieTokenizer
+
 from modeling import UIE, IE_XLNet, IE_Ernie
 
 import pandas as pd
@@ -132,7 +133,7 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     """
 
-    tokenizer = AutoTokenizer.from_pretrained("ernie-3.0-base-zh ")
+    tokenizer = ErnieTokenizer.from_pretrained("ernie-3.0-base-zh ")
 
     # from pretrained model
     model = IE_Ernie.from_pretrained("ernie-3.0-base-zh")
