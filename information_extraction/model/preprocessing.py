@@ -442,58 +442,6 @@ def convert_to_full_data_format(
         start_positions.extend(start_ids)
         end_positions.extend(end_ids)
 
-    """
-
-    # only for debug (can be delete)
-
-    # logger.debug(f"len(content) after tokenize = {len(encoded_inputs['input_ids'])}")
-
-    # 4. adjust index by chunk (only for loss, model will not input)
-    start_ids, end_ids = map(lambda x: x * len(encoded_inputs["input_ids"]), ([0.0], [0.0]))
-
-    # 4.1 adjust label index
-    adjusted_offset_mapping = []
-    # drift = []
-    accumulate_chunk_drift = 0
-    last_chunk_len = 0
-
-    while encoded_inputs["offset_mapping"]:
-        # current_mapping, tmp = drift_offsets_mapping(encoded_inputs["offset_mapping"][:max_seq_len])
-        current_mapping = [list(x) for x in encoded_inputs["offset_mapping"][:max_seq_len]]
-        # logger.debug(f"tmp drift = {current_mapping}")
-        # drift.append(tmp)
-        if adjusted_offset_mapping:
-            # 4.2 adjust index for chunk
-            chunk_drift = 0
-            for i in range(1, max_seq_len):
-                if current_mapping[i][0] == 0 and current_mapping[i][1] == 0 and chunk_drift == 0:
-                    chunk_drift = accumulate_chunk_drift
-                if current_mapping[i][0] == 0 and current_mapping[i][1] == 0:
-                    continue
-                current_mapping[i][0] += chunk_drift
-                current_mapping[i][1] += chunk_drift
-
-        adjusted_offset_mapping.extend(current_mapping)
-        encoded_inputs["offset_mapping"] = encoded_inputs["offset_mapping"][max_seq_len:]
-        accumulate_chunk_drift += max_content_len
-
-    for item in data["result_list"]:
-
-        aligned_start_index = align_to_offset_mapping(item["start"], adjusted_offset_mapping)
-        aligned_end_index = align_to_offset_mapping(item["end"], adjusted_offset_mapping)
-        adjust_ans = "".join(
-            tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][aligned_start_index:aligned_end_index])
-        )
-        # "".join(tokenizer.convert_ids_to_tokens(encoded_inputs["input_ids"][:]))
-        if adjust_ans != item["text"]:
-            logger.error(f"After adjust answer: {adjust_ans}, True answer: {item['text']}")
-            breakpoint()
-        # assert adjust_ans == item["text"], "Convert result index error in convert_to_full_data_format."
-        # logger.debug(f"check aligned_start_index, {encoded_inputs['input_ids'][aligned_start_index]}")
-        start_ids[aligned_start_index] = 1.0
-        end_ids[aligned_end_index] = 1.0
-    """
-
     return {
         "input_ids": encoded_inputs["input_ids"],
         "token_type_ids": encoded_inputs["token_type_ids"],
@@ -506,6 +454,35 @@ def convert_to_full_data_format(
 
 def get_base_config():
     return base_config
+
+
+def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
+    """
+    Create dataloader.
+    Args:
+        dataset(obj:`paddle.io.Dataset`): Dataset instance.
+        mode(obj:`str`, optional, defaults to obj:`train`): If mode is 'train', it will shuffle the dataset randomly.
+        batch_size(obj:`int`, optional, defaults to 1): The sample number of a mini-batch.
+        trans_fn(obj:`callable`, optional, defaults to `None`): function to convert a data sample to input ids, etc.
+    Returns:
+        dataloader(obj:`paddle.io.DataLoader`): The dataloader which generates batches.
+    """
+    if trans_fn:
+        dataset = dataset.map(trans_fn)
+    sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    dataloader = DataLoader(dataset, batch_sampler=sampler, return_list=True)
+    return dataloader
+
+
+"""
+test = ("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
+s = next(test);s
+s
+s["content"][431:437]
+
+len(s["content"])
+s["content"][431:437]
+"""
 
 
 def convert_example(
@@ -579,32 +556,3 @@ def convert_example(
             "end_positions": end_ids,
         }
     return tokenized_output
-
-
-def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
-    """
-    Create dataloader.
-    Args:
-        dataset(obj:`paddle.io.Dataset`): Dataset instance.
-        mode(obj:`str`, optional, defaults to obj:`train`): If mode is 'train', it will shuffle the dataset randomly.
-        batch_size(obj:`int`, optional, defaults to 1): The sample number of a mini-batch.
-        trans_fn(obj:`callable`, optional, defaults to `None`): function to convert a data sample to input ids, etc.
-    Returns:
-        dataloader(obj:`paddle.io.DataLoader`): The dataloader which generates batches.
-    """
-    if trans_fn:
-        dataset = dataset.map(trans_fn)
-    sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
-    dataloader = DataLoader(dataset, batch_sampler=sampler, return_list=True)
-    return dataloader
-
-
-"""
-test = ("./Chinese-Verdict-NLP/information_extraction/data/eval_data.txt")
-s = next(test);s
-s
-s["content"][431:437]
-
-len(s["content"])
-s["content"][431:437]
-"""

@@ -64,9 +64,7 @@ class IETrainer(Trainer):
         self.do_experiment = do_experiment
         self.mlflow_training_step = mlflow_training_step
         self.mlflow_eval_step = mlflow_eval_step
-        self.linear_start = nn.Linear(384, 1)
-        self.linear_end = nn.Linear(384, 1)
-        self.sigmoid = nn.Sigmoid()
+
         super().__init__(
             model,
             criterion,
@@ -106,7 +104,7 @@ class IETrainer(Trainer):
             labels = None
 
         # Modification
-        is_test_full_content = False
+        is_test_full_content = True
         if is_test_full_content:
             paddle.set_device(self.args.device)
             # model.config.hidden_size
@@ -127,12 +125,12 @@ class IETrainer(Trainer):
                     last_sequence_output = sequence_output
 
             # breakpoint()
-            start_logits = self.linear_start(last_sequence_output)
+            start_logits = model.linear_start(last_sequence_output)
             start_logits = paddle.squeeze(start_logits, -1)
-            start_prob = self.sigmoid(start_logits)
-            end_logits = self.linear_end(last_sequence_output)
+            start_prob = model.sigmoid(start_logits)
+            end_logits = model.linear_end(last_sequence_output)
             end_logits = paddle.squeeze(end_logits, -1)
-            end_prob = self.sigmoid(end_logits)
+            end_prob = model.sigmoid(end_logits)
             outputs = (start_prob, end_prob)
 
             # breakpoint()

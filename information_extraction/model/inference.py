@@ -25,6 +25,7 @@ import paddle
 
 from paddlenlp.data import DataCollatorWithPadding
 from paddlenlp.datasets import MapDataset, load_dataset
+
 from paddlenlp.metrics import SpanEvaluator
 from paddlenlp.transformers import UIE, UIEM, AutoTokenizer
 from paddlenlp.utils.log import logger
@@ -126,6 +127,34 @@ def do_eval():
 '''
 
 
+def preprocess_inference_data(
+    data_path: str,
+    tokenizer: Any,
+    read_data_method: str = "chunk",
+    max_seq_len: int = 512,
+    schema: List[str] = ["精神慰撫金", "醫療費", "薪資收入"],
+) -> :
+    if read_data_method == "chunk":
+        read_data = read_data_by_chunk
+        convert_and_tokenize_function = convert_to_uie_format
+        # convert_and_tokenize_function = convert_example
+    else:
+        read_data = read_full_data
+        convert_and_tokenize_function = convert_to_full_data_format
+
+    test_ds = load_dataset(read_data, data_path=data_path, max_seq_len=max_seq_len, lazy=False)
+
+    # TODO convert data by schema
+    convert_function = partial(
+        convert_and_tokenize_function,
+        tokenizer=tokenizer,
+        max_seq_len=max_seq_len,
+    )
+
+    test_ds = test_ds.map(convert_function)
+    pass
+
+
 @paddle.no_grad()
 def do_inference(
     model_path: str,
@@ -154,29 +183,16 @@ def do_inference(
         )
         read_data_method = "chunk"
 
-    if read_data_method == "chunk":
-        read_data = read_data_by_chunk
-        convert_and_tokenize_function = convert_to_uie_format
-        # convert_and_tokenize_function = convert_example
-    else:
-        read_data = read_full_data
-        convert_and_tokenize_function = convert_to_full_data_format
-
-    test_ds = load_dataset(read_data, data_path=data_path, max_seq_len=max_seq_len, lazy=False)
-
-    # TODO convert data by schema
-    convert_function = partial(
-        convert_and_tokenize_function,
+    test_dataset = preprocess_inference_data(
+        data_path=data_path,
         tokenizer=tokenizer,
+        read_data_method=read_data_method,
         max_seq_len=max_seq_len,
-        multilingual=multilingual,
     )
 
-    test_ds = test_ds.map(convert_function)
     data_collator = DataCollatorWithPadding(tokenizer)
-    test_data_loader = create_data_loader(test_ds, batch_size=batch_size, trans_fn=data_collator)
+    test_data_loader = create_data_loader(test_dataset, batch_size=batch_size, trans_fn=data_collator)
     for inputs in test_data_loader:
-        labels = (inputs.pop("start_positions"), inputs.pop("end_positions"))
         outputs = model(**inputs)
         outputs_prob = (F.softmax(output, axis=1) for output in (outputs[0], outputs[1]))
         breakpoint()
