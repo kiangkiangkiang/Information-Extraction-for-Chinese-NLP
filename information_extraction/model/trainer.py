@@ -106,7 +106,8 @@ class IETrainer(Trainer):
         # Modification
         is_test_full_content = True
         if is_test_full_content:
-            paddle.set_device(self.args.device)
+            logger.debug(f"Using {self.args.device}")
+            paddle.set_device("gpu")
             # model.config.hidden_size
             model_max_len = 256
             model_input = {}
