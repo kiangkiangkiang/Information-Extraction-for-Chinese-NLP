@@ -108,7 +108,7 @@ class IETrainer(Trainer):
         if is_test_full_content:
             paddle.set_device(self.args.device)
             # model.config.hidden_size
-            model_max_len = 512
+            model_max_len = 256
             model_input = {}
             last_sequence_output = []
 
