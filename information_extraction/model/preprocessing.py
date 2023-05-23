@@ -272,13 +272,15 @@ def align_to_offset_mapping(origin_index: int, offset_mapping: List[List[int]]) 
     Returns:
         int: Aligned index.
     """
-
+    final_index = 0
     for index, span in enumerate(offset_mapping):
         if span[0] <= origin_index < span[1]:
             return index
+        if span[0] != 0 and span[1] != 0:
+            final_index = index
 
-    raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
-    # return -1
+    # raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
+    return final_index + 1
 
 
 def convert_to_uie_format(
@@ -372,7 +374,8 @@ def convert_to_full_data_format(
     accumulate_token = 0
     start_positions = []
     end_positions = []
-    while data["content"]:
+    data_copy = data.copy()  # must to do, or data will be remove
+    while data_copy["content"]:
         # 1. split chunk by max_content_len
         current_content_result = []
         # pop result in subcontent
@@ -404,8 +407,8 @@ def convert_to_full_data_format(
 
         # 2. tokenize each chunk
         tmp_inputs = tokenizer(
-            text=[data["prompt"]],
-            text_pair=[data["content"][:max_content_len]],
+            text=[data_copy["prompt"]],
+            text_pair=[data_copy["content"][:max_content_len]],
             max_seq_len=max_seq_len,
             pad_to_max_seq_len=True,
             return_attention_mask=True,
@@ -414,12 +417,16 @@ def convert_to_full_data_format(
             return_offsets_mapping=True,
         )[0]
 
+        # tokenizer([data_copy["prompt"]], [data_copy["content"][:max_content_len]], return_attention_mask=True, pad_to_max_seq_len=True, max_seq_len=max_seq_len, return_offsets_mapping=True, return_dict=False, return_position_ids=True)
+        # tokenizer(data_copy["content"][:205], return_offsets_mapping=True, max_seq_len=512)
+        # xlnet的vocab沒有‘㈠’這個字，所以用xlnet會有bug
+
         # 3. concate all chunk
         for key in tmp_inputs:
             encoded_inputs[key].extend(tmp_inputs[key])
 
         accumulate_token += max_content_len
-        data["content"] = data["content"][max_content_len:]
+        data_copy["content"] = data_copy["content"][max_content_len:]
 
         start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
 
@@ -429,8 +436,11 @@ def convert_to_full_data_format(
 
             # align original index to tokenized (offset_mapping) index
             for item in current_content_result:
+
                 aligned_start_index = align_to_offset_mapping(item["start"] + drift, adjusted_offset_mapping)
                 aligned_end_index = align_to_offset_mapping(item["end"] + drift, adjusted_offset_mapping)
+                if aligned_start_index == -1 or aligned_end_index == -1:
+                    logger.error("-1 is happened")
                 adjust_ans = "".join(
                     tokenizer.convert_ids_to_tokens(tmp_inputs["input_ids"][aligned_start_index:aligned_end_index])
                 )

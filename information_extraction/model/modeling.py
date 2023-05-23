@@ -129,7 +129,6 @@ class IE_XLNet(XLNetPretrainedModel):
         self.initializer_range = config.initializer_range
         self.linear_start = nn.Linear(config.d_model, 1)
         self.linear_end = nn.Linear(config.d_model, 1)
-        breakpoint()
         self.sigmoid = nn.Sigmoid()
         self.input_spec = [
             InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
@@ -165,17 +164,9 @@ class IE_XLNet(XLNetPretrainedModel):
                 inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
                 start_prob, end_prob = model(**inputs)
         """
-        sequence_output = self.xlnet(
+        return self.xlnet(
             input_ids=input_ids,
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
         )
-        logger.debug("in xlnet")
-        start_logits = self.linear_start(sequence_output)
-        start_logits = squeeze(start_logits, -1)
-        start_prob = self.sigmoid(start_logits)
-        end_logits = self.linear_end(sequence_output)
-        end_logits = squeeze(end_logits, -1)
-        end_prob = self.sigmoid(end_logits)
-        return start_prob, end_prob

@@ -20,6 +20,8 @@ from inference import *
 import os
 
 
+from paddle.io import DataLoader
+
 # Add MLflow for experiment # change mlflow to False
 MLFLOW = True
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
@@ -45,7 +47,7 @@ def finetune(
     optimizers: Optional[Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler]] = (None, None),
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
-
+    set_device("cpu")
     # Check arguments Legal or not
     if not os.path.exists(train_path):
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
@@ -77,7 +79,6 @@ def finetune(
         read_data = read_full_data
         convert_and_tokenize_function = convert_to_full_data_format
 
-    set_device("cpu")
     # Log on each process the small summary:
     logger.info(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, world_size: {training_args.world_size}, "
@@ -94,7 +95,6 @@ def finetune(
         )
         for data in (train_path, dev_path)
     )
-
     model, tokenizer = load_model_and_tokenizer(model_name_or_path)
 
     # TODO implement soft prompt
@@ -124,6 +124,7 @@ def finetune(
         compute_metrics=compute_metrics,
         optimizers=optimizers,
         callbacks=[DefaultFlowCallback],
+        max_seq_len=max_seq_len,
     )
     trainer.optimizers = (
         optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())

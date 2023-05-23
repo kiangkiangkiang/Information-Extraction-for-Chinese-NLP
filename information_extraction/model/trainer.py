@@ -10,6 +10,7 @@ from paddlenlp.trainer.training_args import TrainingArguments
 from paddlenlp.data import DataCollator
 from paddlenlp.utils.batch_sampler import DistributedBatchSampler as NlpDistributedBatchSampler
 from paddlenlp.transformers.tokenizer_utils import PretrainedTokenizer
+from paddlenlp.transformers import ErnieForMaskedLM
 from paddlenlp.trainer.trainer_utils import (
     EvalPrediction,
     EvalLoopOutput,
@@ -24,7 +25,6 @@ import paddle
 from typing import Union, Optional, Callable, Dict, Tuple, List, NamedTuple
 
 base_config = get_base_config()
-# TODO if loss太大，print出文本
 
 
 class IEEvalPrediction(NamedTuple):
@@ -60,10 +60,12 @@ class IETrainer(Trainer):
         do_experiment: bool = True,
         mlflow_training_step: int = 0,
         mlflow_eval_step: int = 0,
+        max_seq_len: int = 512,
     ):
         self.do_experiment = do_experiment
         self.mlflow_training_step = mlflow_training_step
         self.mlflow_eval_step = mlflow_eval_step
+        self.max_seq_len = max_seq_len
 
         super().__init__(
             model,
@@ -84,9 +86,6 @@ class IETrainer(Trainer):
         How the loss is computed by Trainer. By default, all models return the loss in the first element.
         Subclass and override for custom behavior.
         """
-        # Modification
-        # 這裡接到的inputs是split後的input，label是整個文本的label，兩者長度不同
-        # ex. inputs['input_ids'] = 7 by 2048, label = 1 by 14700
 
         if self.criterion is not None:
             if "labels" in inputs:
@@ -106,35 +105,41 @@ class IETrainer(Trainer):
         # Modification
         is_test_full_content = True
         if is_test_full_content:
-            logger.debug(f"Using {self.args.device}")
-            paddle.set_device("gpu")
-            # model.config.hidden_size
-            model_max_len = 256
-            model_input = {}
             last_sequence_output = []
-
             # model loop
             while inputs["input_ids"].shape[1] > 0:
+                paddle.set_device("gpu")
+                model_input = {}
                 for key in inputs:
-                    model_input[key] = inputs[key][:, :model_max_len]
-                    inputs[key] = inputs[key][:, model_max_len:]
-                sequence_output, _ = model(**model_input)
+                    # TODO reshape model_input into (bach_size, max_seq_len)
+                    model_input[key] = paddle.to_tensor(inputs[key][:, : self.max_seq_len])
+                    inputs[key] = inputs[key][:, self.max_seq_len :]
+
+                # logger.debug(f"Start model...")
+                sequence_output = model(**model_input)[0]
+                del model_input
+                # logger.debug(f"End model...")
                 # output[0] = 1 * max_len * hidden_size, outputs[1] = 1 * hidden_size
+
+                paddle.set_device("cpu")
+                sequence_output = paddle.to_tensor(sequence_output)
                 if len(last_sequence_output) > 0:
                     last_sequence_output = paddle.concat([last_sequence_output, sequence_output], axis=1)
+                    # last_sequence_output += sequence_output
                 else:
                     last_sequence_output = sequence_output
+                del sequence_output
 
-            # breakpoint()
             start_logits = model.linear_start(last_sequence_output)
             start_logits = paddle.squeeze(start_logits, -1)
-            start_prob = model.sigmoid(start_logits)
             end_logits = model.linear_end(last_sequence_output)
             end_logits = paddle.squeeze(end_logits, -1)
-            end_prob = model.sigmoid(end_logits)
-            outputs = (start_prob, end_prob)
 
-            # breakpoint()
+            paddle.set_device("gpu")
+            start_prob = paddle.to_tensor(model.sigmoid(start_logits))
+            end_prob = paddle.to_tensor(model.sigmoid(end_logits))
+            paddle.set_device("cpu")
+            outputs = (start_prob, end_prob)
         else:
             outputs = model(**inputs)
 
@@ -196,7 +201,6 @@ class IETrainer(Trainer):
             )
         # min_word 為用來判斷group的最小字元，例如min_word=4，代表用每個ner_type的前四個字來區隔其他的type
         min_word = self.__get_min_word_in_ner_type()
-
         args = self.args
 
         prediction_loss_only = prediction_loss_only if prediction_loss_only is not None else args.prediction_loss_only
@@ -284,6 +288,7 @@ class IETrainer(Trainer):
                     batch_size = observed_batch_size
 
             # Prediction step, output = (batch_size, max_len)
+
             loss, logits, labels = self.prediction_step(model, inputs, prediction_loss_only, ignore_keys=ignore_keys)
 
             # Update containers on host
@@ -304,7 +309,6 @@ class IETrainer(Trainer):
             self.control = self.callback_handler.on_prediction_step(args, self.state, self.control)
             if max_eval_iters > 0 and step >= max_eval_iters - 1:
                 break
-
         # Gather all remaining tensors and put them back on the CPU
         if losses_host is not None:
             losses = nested_numpify(losses_host)
