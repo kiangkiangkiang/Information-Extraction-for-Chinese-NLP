@@ -24,6 +24,7 @@ from paddle.io import DataLoader
 
 # Add MLflow for experiment # change mlflow to False
 MLFLOW = True
+is_experiment = True
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
 os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
@@ -203,7 +204,7 @@ def finetune(
     # inference for testing data
     # 實驗程式 務必之後刪除
     do_inference = False
-    if do_inference:
+    if is_experiment & do_inference:
         experiment_inference()
 
 
