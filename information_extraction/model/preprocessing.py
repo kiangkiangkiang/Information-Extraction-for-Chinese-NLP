@@ -18,7 +18,7 @@ from utils.exceptions import DataError, PreprocessingError
 from config import BaseConfig
 
 base_config = BaseConfig()
-# SOLATIUM_WORD = ['精神', '慰撫', '撫慰', '非財產']
+SOLATIUM_WORD = ["精神", "慰撫", "撫慰", "非財產"]
 # INCOME_WORD = ['薪', '收入', '所得', '俸']
 # MEDICAL_WORD = []
 # THER_WORD = []
@@ -93,12 +93,49 @@ class IETrainingArguments(TrainingArguments):
         return super().__post_init__()
 
 
-def is_down_sampling(down_sampling_ratio: float = 0.5) -> bool:
+def random_choose(prob: float = 0.5) -> bool:
     criterion = np.random.uniform(0, 1, 1)[0]
-    return True if criterion < down_sampling_ratio else False
+    return True if criterion < prob else False
 
 
-def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_ratio: float = 0) -> Dict[str, str]:
+# 目前只有實作精神慰撫金
+def decide_if_do_augmentation(
+    content,
+    result_list,
+    prompt,
+    aug_times=1,
+    limit=2,
+    aug_data_type="negative",
+    aug_criterion=SOLATIUM_WORD,
+) -> bool:
+    is_do_data_augmentation = False
+    if aug_times >= limit:
+        return is_do_data_augmentation, aug_times + 1
+
+    if agu_data_type not in ["negative", "positive", "both"]:
+        logger.warning(
+            f"Data Augmentation args agu_data_type cannot be {agu_data_type}. \
+            Must be one of the following args: ['negative', 'positive', 'both']. \
+                Automatically change agu_data_type to 'negative'."
+        )
+        agu_data_type = "negative"
+
+    if agu_data_type == "negative" or "both":
+        if len(result_list) == 0:
+            criterion = pd.unique([content.find(special_word) for special_word in aug_criterion])
+            if len(criterion) > 1:  # 有出現
+                is_do_data_augmentation = True
+                return is_do_data_augmentation, aug_times + 1
+
+    if agu_data_type == "positive" or "both":
+        if len(result_list) > 0 and prompt == "精神慰撫金額":
+            is_do_data_augmentation = True
+            return is_do_data_augmentation, aug_times + 1
+
+    raise ValueError("Should not be here.")
+
+
+def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train") -> Dict[str, str]:
     """
     Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
     Model Input Format: [CLS] Prompt [SEP] Content [SEP].
@@ -120,8 +157,11 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
     total_for_sample_ratio = {i: 0 for i in base_config.ner_type}
     total_num = 0
     debug_for_sample_ratio["Total Ratio"] = 0
-    if down_sampling_ratio < 0 or down_sampling_ratio > 1:
-        raise ValueError("down_sampling_ratio must between [0, 1].")
+    augmentation_counter = 1
+    AUGMENTATION_LIMIT = 3  # 2: 2倍
+
+    if data_type not in ["train", "evaluation", "test"]:
+        raise ValueError(f"data_type must be in ['train', 'evaluation', 'test'].")
 
     with open(data_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -140,6 +180,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
+                do_data_augmentation = False
 
                 # pop result in subcontent
                 while len(result_list) > 0:
@@ -173,6 +214,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
                 # TODO normalize content[:max_content_len]
                 # from paddlenlp.transformers.tokenizer_utils import normalize_chars
                 # normalize_chars(content[:max_content_len])
+
                 truncate_result = {
                     "content": content[:max_content_len],
                     "result_list": current_content_result,
@@ -192,9 +234,23 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
                         raise PreprocessingError(f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}.")
                 # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
                 yield truncate_result
+                # content = content[max_content_len:]
+                # accumulate_token += max_content_len
 
-                content = content[max_content_len:]
-                accumulate_token += max_content_len
+                # data augmentation (暫時只實作慰撫金)
+                if data_type == "train" and prompt == "精神慰撫金額":
+                    do_data_augmentation, augmentation_counter = decide_if_do_augmentation(
+                        content=content[:max_content_len],
+                        result_list=current_content_result,
+                        prompt=prompt,
+                        aug_times=augmentation_counter,
+                        limit=AUGMENTATION_LIMIT,
+                    )
+
+                if not do_data_augmentation:
+                    content = content[max_content_len:]
+                    accumulate_token += max_content_len
+                    augmentation_counter = 1
 
         logger.debug(f"Total number of content (after chunk) of {data_path} is {total_num}. ")
         try:
@@ -212,9 +268,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, down_sampling_rat
 
 
 def read_full_data(data_path: str) -> Tuple[Dict[str, str], int]:
-    logger.info(
-        f"Read Full Data method is selected. The max_seq_len and down_sampling_ratio arguments will be ignore..."
-    )
+    logger.info(f"Read Full Data method is selected. The max_seq_len argument will be ignore...")
     with open(data_path, "r", encoding="utf-8") as f:
         for line in f:
             json_line = json.loads(line)
@@ -318,6 +372,7 @@ def convert_to_uie_format(
             max_seq_len=max_seq_len,
             pad_to_max_seq_len=True,
             return_attention_mask=True,
+            return_token_type_ids=True,
             return_position_ids=True,
             return_dict=False,
             return_offsets_mapping=True,
@@ -330,6 +385,7 @@ def convert_to_uie_format(
             truncation=True,
             max_seq_len=max_seq_len,
             pad_to_max_seq_len=True,
+            return_token_type_ids=True,
             return_attention_mask=True,
             return_position_ids=True,
             return_dict=False,

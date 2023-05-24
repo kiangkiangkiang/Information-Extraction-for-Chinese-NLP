@@ -158,7 +158,9 @@ class IETrainer(Trainer):
             outputs = (start_prob, end_prob)
             """
         else:
+            breakpoint()
             outputs = model(**inputs)
+            breakpoint()
 
         # for group evaluation
         min_word = self.__get_min_word_in_ner_type()

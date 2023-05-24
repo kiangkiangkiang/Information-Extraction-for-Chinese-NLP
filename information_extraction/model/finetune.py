@@ -91,10 +91,10 @@ def finetune(
             read_data,
             data_path=data,
             max_seq_len=max_seq_len,
-            down_sampling_ratio=down_sampling_ratio,
+            data_type=data_type,
             lazy=False,
         )
-        for data in (train_path, dev_path)
+        for data, data_type in zip((train_path, dev_path), ("train", "evaluation"))
     )
     model, tokenizer = load_model_and_tokenizer(model_name_or_path)
 
