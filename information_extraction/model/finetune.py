@@ -47,7 +47,7 @@ def finetune(
     optimizers: Optional[Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler]] = (None, None),
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
-    set_device("cpu")
+    set_device(training_args.device)
     # Check arguments Legal or not
     if not os.path.exists(train_path):
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
@@ -73,8 +73,8 @@ def finetune(
 
     if read_data_method == "chunk":
         read_data = read_data_by_chunk
-        # convert_and_tokenize_function = convert_to_uie_format
-        convert_and_tokenize_function = convert_example
+        convert_and_tokenize_function = convert_to_uie_format
+        # convert_and_tokenize_function = convert_example
     else:
         read_data = read_full_data
         convert_and_tokenize_function = convert_to_full_data_format
@@ -125,6 +125,7 @@ def finetune(
         optimizers=optimizers,
         callbacks=[DefaultFlowCallback],
         max_seq_len=max_seq_len,
+        read_data_method=read_data_method,
     )
     trainer.optimizers = (
         optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())

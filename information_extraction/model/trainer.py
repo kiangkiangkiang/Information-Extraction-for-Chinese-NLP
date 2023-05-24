@@ -61,11 +61,13 @@ class IETrainer(Trainer):
         mlflow_training_step: int = 0,
         mlflow_eval_step: int = 0,
         max_seq_len: int = 512,
+        read_data_method: str = "chunk",
     ):
         self.do_experiment = do_experiment
         self.mlflow_training_step = mlflow_training_step
         self.mlflow_eval_step = mlflow_eval_step
         self.max_seq_len = max_seq_len
+        self.read_data_method = read_data_method
 
         super().__init__(
             model,
@@ -103,9 +105,8 @@ class IETrainer(Trainer):
             labels = None
 
         # Modification
-        is_test_full_content = True
-        if is_test_full_content:
-            last_sequence_output = []
+        if self.read_data_method == "full":
+            outputs = []
             # model loop
             while inputs["input_ids"].shape[1] > 0:
                 paddle.set_device("gpu")
@@ -116,6 +117,17 @@ class IETrainer(Trainer):
                     inputs[key] = inputs[key][:, self.max_seq_len :]
 
                 # logger.debug(f"Start model...")
+
+                tmp_outputs = model(**model_input)
+                paddle.set_device("cpu")
+                tmp_outputs = paddle.to_tensor(tmp_outputs)
+                if len(outputs) > 0:
+                    outputs = paddle.concat([outputs, tmp_outputs], axis=2)
+                    # last_sequence_output += sequence_output
+                else:
+                    outputs = tmp_outputs
+
+                """
                 sequence_output = model(**model_input)[0]
                 del model_input
                 # logger.debug(f"End model...")
@@ -129,7 +141,11 @@ class IETrainer(Trainer):
                 else:
                     last_sequence_output = sequence_output
                 del sequence_output
+                """
+            paddle.set_device("gpu")
+            outputs = paddle.to_tensor(outputs)
 
+            """
             start_logits = model.linear_start(last_sequence_output)
             start_logits = paddle.squeeze(start_logits, -1)
             end_logits = model.linear_end(last_sequence_output)
@@ -140,6 +156,7 @@ class IETrainer(Trainer):
             end_prob = paddle.to_tensor(model.sigmoid(end_logits))
             paddle.set_device("cpu")
             outputs = (start_prob, end_prob)
+            """
         else:
             outputs = model(**inputs)
 
