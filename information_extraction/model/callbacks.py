@@ -8,9 +8,9 @@ from test_metric import SpanEvaluator
 
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
-from paddlenlp.transformers import AutoTokenizer, ErnieTokenizer, XLNetTokenizer, RoFormerTokenizer
+from paddlenlp.transformers import AutoTokenizer, ErnieTokenizer, XLNetTokenizer, RoFormerTokenizer, UIEX
 
-from modeling import UIE, IE_XLNet, IE_Ernie, IE_Roformer, UIEX
+from modeling import UIE, IE_XLNet, IE_Ernie, IE_Roformer
 
 import pandas as pd
 import numpy as np
