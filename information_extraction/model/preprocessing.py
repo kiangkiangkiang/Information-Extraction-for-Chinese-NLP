@@ -102,37 +102,29 @@ def random_choose(prob: float = 0.5) -> bool:
 def decide_if_do_augmentation(
     content,
     result_list,
-    prompt,
-    aug_times=1,
-    limit=2,
     aug_data_type="negative",
     aug_criterion=SOLATIUM_WORD,
 ) -> bool:
-    is_do_data_augmentation = False
-    if aug_times >= limit:
-        return is_do_data_augmentation, aug_times + 1
 
-    if agu_data_type not in ["negative", "positive", "both"]:
+    if aug_data_type not in ["negative", "positive", "both"]:
         logger.warning(
-            f"Data Augmentation args agu_data_type cannot be {agu_data_type}. \
+            f"Data Augmentation args aug_data_type cannot be {aug_data_type}. \
             Must be one of the following args: ['negative', 'positive', 'both']. \
-                Automatically change agu_data_type to 'negative'."
+                Automatically change aug_data_type to 'negative'."
         )
-        agu_data_type = "negative"
+        aug_data_type = "negative"
 
-    if agu_data_type == "negative" or "both":
+    if aug_data_type == "negative" or "both":
         if len(result_list) == 0:
             criterion = pd.unique([content.find(special_word) for special_word in aug_criterion])
-            if len(criterion) > 1:  # 有出現
-                is_do_data_augmentation = True
-                return is_do_data_augmentation, aug_times + 1
+            if len(criterion) > 1 and content.find("元") != -1:  # 有出現
+                logger.debug("in more sample")
+                return True
 
-    if agu_data_type == "positive" or "both":
-        if len(result_list) > 0 and prompt == "精神慰撫金額":
-            is_do_data_augmentation = True
-            return is_do_data_augmentation, aug_times + 1
-
-    raise ValueError("Should not be here.")
+    if aug_data_type == "positive" or "both":
+        if len(result_list) > 0:
+            return True
+    return False
 
 
 def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train") -> Dict[str, str]:
@@ -157,8 +149,8 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
     total_for_sample_ratio = {i: 0 for i in base_config.ner_type}
     total_num = 0
     debug_for_sample_ratio["Total Ratio"] = 0
-    augmentation_counter = 1
     AUGMENTATION_LIMIT = 3  # 2: 2倍
+    augmentation_counter = AUGMENTATION_LIMIT - 1
 
     if data_type not in ["train", "evaluation", "test"]:
         raise ValueError(f"data_type must be in ['train', 'evaluation', 'test'].")
@@ -180,7 +172,6 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
             while len(content) > 0:
                 max_content_len = max_seq_len - len(prompt) - 3
                 current_content_result = []
-                do_data_augmentation = False
 
                 # pop result in subcontent
                 while len(result_list) > 0:
@@ -215,42 +206,40 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
                 # from paddlenlp.transformers.tokenizer_utils import normalize_chars
                 # normalize_chars(content[:max_content_len])
 
-                truncate_result = {
-                    "content": content[:max_content_len],
-                    "result_list": current_content_result,
-                    "prompt": prompt,
-                }
+                # data augmentation (暫時只實作慰撫金)
+                if data_type == "train" and prompt == "精神慰撫金額":
+                    if decide_if_do_augmentation(content=content[:max_content_len], result_list=current_content_result):
+                        augmentation_counter = 1
 
-                total_num += 1
-                total_for_sample_ratio[prompt] += 1
-                if len(current_content_result) > 0:
-                    debug_for_sample_ratio[prompt] += 1
-                    debug_for_sample_ratio["Total Ratio"] += 1
+                while augmentation_counter < AUGMENTATION_LIMIT:
+                    truncate_result = {
+                        "content": content[:max_content_len],
+                        "result_list": current_content_result,
+                        "prompt": prompt,
+                    }
 
-                for each_result in truncate_result["result_list"]:
-                    adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
-                    true_data = each_result["text"]
-                    if adjust_data != true_data:
-                        raise PreprocessingError(f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}.")
-                # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
-                yield truncate_result
+                    total_num += 1
+                    total_for_sample_ratio[prompt] += 1
+                    if len(current_content_result) > 0:
+                        debug_for_sample_ratio[prompt] += 1
+                        debug_for_sample_ratio["Total Ratio"] += 1
+
+                    for each_result in truncate_result["result_list"]:
+                        adjust_data = truncate_result["content"][each_result["start"] : each_result["end"]]
+                        true_data = each_result["text"]
+                        if adjust_data != true_data:
+                            raise PreprocessingError(
+                                f"adjust error. adjust_data: {adjust_data}, true_data: {true_data}."
+                            )
+                    # logger.debug(f"debug for preprocessing, truncate_result={truncate_result}")
+                    yield truncate_result
+                    augmentation_counter += 1
                 # content = content[max_content_len:]
                 # accumulate_token += max_content_len
 
-                # data augmentation (暫時只實作慰撫金)
-                if data_type == "train" and prompt == "精神慰撫金額":
-                    do_data_augmentation, augmentation_counter = decide_if_do_augmentation(
-                        content=content[:max_content_len],
-                        result_list=current_content_result,
-                        prompt=prompt,
-                        aug_times=augmentation_counter,
-                        limit=AUGMENTATION_LIMIT,
-                    )
-
-                if not do_data_augmentation:
-                    content = content[max_content_len:]
-                    accumulate_token += max_content_len
-                    augmentation_counter = 1
+                content = content[max_content_len:]
+                accumulate_token += max_content_len
+                augmentation_counter = AUGMENTATION_LIMIT - 1
 
         logger.debug(f"Total number of content (after chunk) of {data_path} is {total_num}. ")
         try:

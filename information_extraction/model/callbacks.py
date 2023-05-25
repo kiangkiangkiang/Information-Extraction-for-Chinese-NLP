@@ -99,12 +99,12 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     # main model: UIE
     # from pretrained tokenizer
-    """
+
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     model = UIE.from_pretrained(model_name_or_path)
-    """
+
     # test for xlnet (fail)
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
@@ -124,10 +124,12 @@ def load_model_and_tokenizer(model_name_or_path: str):
     model = ErnieModel.from_pretrained("ernie-3.0-tiny-mini-v1-zh")
     """
 
+    """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     model = UIEX.from_pretrained(model_name_or_path)
+    """
 
     """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)

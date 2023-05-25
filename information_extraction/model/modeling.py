@@ -69,6 +69,19 @@ class UIE(ErniePretrainedModel):
                 inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
                 start_prob, end_prob = model(**inputs)
         """
+        '''TODO softprompt
+        Goal: 訓練一個 softprompt，將固定的 promp 變成 softprompt 後，concat 原本的 embedding
+        需實作：自己繼承一個 Word embedding layer，將 prompt 和 content 各自餵給不同的 embedding
+            接著將所有 layer 的 gradient fix 起來，只訓練 prompt embedding，如此一來就有固定的
+            prompt embedding，最後將 prompt embedding fix 住，訓練其他layer，看成效如何。
+        
+        Note: 只要 input_ids = None 就可以讓模型只吃到 inputs_embeds
+        
+        實作:
+        1. 
+
+        '''
+        
         sequence_output, _ = self.ernie(
             input_ids=input_ids,
             token_type_ids=token_type_ids,
