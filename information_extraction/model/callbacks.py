@@ -10,7 +10,7 @@ from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
 from paddlenlp.transformers import AutoTokenizer, ErnieTokenizer, XLNetTokenizer, RoFormerTokenizer, UIEX
 
-from modeling import UIE, IE_XLNet, IE_Ernie, IE_Roformer
+from modeling import UIE, IE_XLNet, IE_Ernie, IE_Roformer, IE_Bert
 
 import pandas as pd
 import numpy as np
@@ -99,11 +99,12 @@ def load_model_and_tokenizer(model_name_or_path: str):
 
     # main model: UIE
     # from pretrained tokenizer
-
+    """
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     # from pretrained model
     model = UIE.from_pretrained(model_name_or_path)
+    """
 
     # test for xlnet (fail)
     """
@@ -147,5 +148,8 @@ def load_model_and_tokenizer(model_name_or_path: str):
     model = IE_Roformer.from_pretrained(model_name_or_path)
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     """
+
+    model = IE_Bert.from_pretrained(model_name_or_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
     return model, tokenizer

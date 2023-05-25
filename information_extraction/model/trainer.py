@@ -158,7 +158,6 @@ class IETrainer(Trainer):
             outputs = (start_prob, end_prob)
             """
         else:
-
             outputs = model(**inputs)
 
         # for group evaluation

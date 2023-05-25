@@ -9,6 +9,8 @@ from paddlenlp.transformers import (
     RoFormerModel,
     RoFormerPretrainedModel,
     BertModel,
+    BertConfig,
+    BertPretrainedModel,
 )
 from paddle.static import InputSpec
 
@@ -44,32 +46,12 @@ class UIE(ErniePretrainedModel):
         self.linear_end = nn.Linear(config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
 
-        self.is_train_softprompt = True
-        if self.is_train_softprompt:
-            self.__setup_gradient_for_softprompt()
-
         self.input_spec = [
             InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
         ]
-
-    def __setup_gradient_for_softprompt(self):
-        for param in self.ernie.parameters():
-            param.stop_gradient = True
-        for param in self.linear_start.parameters():
-            param.stop_gradient = True
-        for param in self.linear_end.parameters():
-            param.stop_gradient = True
-        self.content_word_embeddings.parameters()[0].stop_gradient = True
-
-    def softprompt_word_embedding(self, input_ids):
-        sep_index = int(paddle.where(input_ids[0] == 2)[0][0])
-        # 原始output = 1, 512, 768
-        prompt_embedding = self.prompt_word_embeddings(input_ids[0, :sep_index])
-        content_embedding = self.content_word_embeddings(input_ids[0, sep_index:])
-        return paddle.unsqueeze(paddle.concat([prompt_embedding, content_embedding], axis=0), 0)
 
     def forward(
         self,
@@ -78,6 +60,7 @@ class UIE(ErniePretrainedModel):
         position_ids: Optional[Tensor] = None,
         attention_mask: Optional[Tensor] = None,
         inputs_embeds: Optional[Tensor] = None,
+        **kwargs,
     ):
         r"""
         Args:
@@ -114,10 +97,6 @@ class UIE(ErniePretrainedModel):
         1. 
 
         """
-
-        if self.is_train_softprompt:
-            inputs_embeds = self.softprompt_word_embedding(input_ids)
-            input_ids = None
 
         sequence_output, _ = self.ernie(
             input_ids=input_ids,
@@ -280,6 +259,62 @@ class IE_Roformer(RoFormerPretrainedModel):
             token_type_ids=token_type_ids,
             attention_mask=attention_mask,
             inputs_embeds=inputs_embeds,
+        )
+        start_logits = self.linear_start(sequence_output)
+        start_logits = squeeze(start_logits, -1)
+        start_prob = self.sigmoid(start_logits)
+        end_logits = self.linear_end(sequence_output)
+        end_logits = squeeze(end_logits, -1)
+        end_prob = self.sigmoid(end_logits)
+        return start_prob, end_prob
+
+
+class IE_Bert(BertPretrainedModel):
+    def __init__(self, config: BertConfig):
+        super(IE_Bert, self).__init__(config)
+        self.bert = BertModel(config)
+        self.linear_start = nn.Linear(config.hidden_size, 1)
+        self.linear_end = nn.Linear(config.hidden_size, 1)
+        self.sigmoid = nn.Sigmoid()
+        self.input_spec = [
+            InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
+            InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
+        ]
+
+    def forward(
+        self,
+        input_ids: Optional[Tensor] = None,
+        token_type_ids: Optional[Tensor] = None,
+        position_ids: Optional[Tensor] = None,
+        attention_mask: Optional[Tensor] = None,
+    ):
+        r"""
+        Args:
+            input_ids (Tensor):
+                See :class:`ErnieModel`.
+            token_type_ids (Tensor, optional):
+                See :class:`ErnieModel`.
+            position_ids (Tensor, optional):
+                See :class:`ErnieModel`.
+            attention_mask (Tensor, optional):
+                See :class:`ErnieModel`.
+        Example:
+            .. code-block::
+                import paddle
+                from paddlenlp.transformers import UIE, ErnieTokenizer
+                tokenizer = ErnieTokenizer.from_pretrained('uie-base')
+                model = UIE.from_pretrained('uie-base')
+                inputs = tokenizer("Welcome to use PaddlePaddle and PaddleNLP!")
+                inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
+                start_prob, end_prob = model(**inputs)
+        """
+
+        sequence_output = self.bert(
+            input_ids=input_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
         )
         start_logits = self.linear_start(sequence_output)
         start_logits = squeeze(start_logits, -1)
