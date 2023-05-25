@@ -15,7 +15,7 @@ from paddle.static import InputSpec
 from paddlenlp.utils.log import logger
 from paddle import nn, Tensor, squeeze
 from typing import Optional
-
+import paddle
 
 # main model
 class UIE(ErniePretrainedModel):
@@ -31,15 +31,45 @@ class UIE(ErniePretrainedModel):
     def __init__(self, config: ErnieConfig):
         super(UIE, self).__init__(config)
         self.ernie = ErnieModel(config)
+        weight_attr = paddle.ParamAttr(
+            initializer=nn.initializer.TruncatedNormal(mean=0.0, std=config.initializer_range)
+        )
+        self.prompt_word_embeddings = nn.Embedding(
+            config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id, weight_attr=weight_attr
+        )
+        self.content_word_embeddings = nn.Embedding(
+            config.vocab_size, config.hidden_size, padding_idx=config.pad_token_id, weight_attr=weight_attr
+        )
         self.linear_start = nn.Linear(config.hidden_size, 1)
         self.linear_end = nn.Linear(config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
+
+        self.is_train_softprompt = True
+        if self.is_train_softprompt:
+            self.__setup_gradient_for_softprompt()
+
         self.input_spec = [
             InputSpec(shape=[None, None], dtype="int64", name="input_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="token_type_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="position_ids"),
             InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
         ]
+
+    def __setup_gradient_for_softprompt(self):
+        for param in self.ernie.parameters():
+            param.stop_gradient = True
+        for param in self.linear_start.parameters():
+            param.stop_gradient = True
+        for param in self.linear_end.parameters():
+            param.stop_gradient = True
+        self.content_word_embeddings.parameters()[0].stop_gradient = True
+
+    def softprompt_word_embedding(self, input_ids):
+        sep_index = int(paddle.where(input_ids[0] == 2)[0][0])
+        # 原始output = 1, 512, 768
+        prompt_embedding = self.prompt_word_embeddings(input_ids[0, :sep_index])
+        content_embedding = self.content_word_embeddings(input_ids[0, sep_index:])
+        return paddle.unsqueeze(paddle.concat([prompt_embedding, content_embedding], axis=0), 0)
 
     def forward(
         self,
@@ -69,19 +99,26 @@ class UIE(ErniePretrainedModel):
                 inputs = {k:paddle.to_tensor([v]) for (k, v) in inputs.items()}
                 start_prob, end_prob = model(**inputs)
         """
-        '''TODO softprompt
+        """TODO softprompt
         Goal: 訓練一個 softprompt，將固定的 promp 變成 softprompt 後，concat 原本的 embedding
         需實作：自己繼承一個 Word embedding layer，將 prompt 和 content 各自餵給不同的 embedding
             接著將所有 layer 的 gradient fix 起來，只訓練 prompt embedding，如此一來就有固定的
             prompt embedding，最後將 prompt embedding fix 住，訓練其他layer，看成效如何。
         
-        Note: 只要 input_ids = None 就可以讓模型只吃到 inputs_embeds
+        Note: 
+        * 只要 input_ids = None 就可以讓模型只吃到 inputs_embeds
+        * 必須每個prompt分開處理，因為統一訓練的話等於會訓練一個universal的prompt，效果感覺就不太好。
         
         實作:
+        
         1. 
 
-        '''
-        
+        """
+
+        if self.is_train_softprompt:
+            inputs_embeds = self.softprompt_word_embedding(input_ids)
+            input_ids = None
+
         sequence_output, _ = self.ernie(
             input_ids=input_ids,
             token_type_ids=token_type_ids,

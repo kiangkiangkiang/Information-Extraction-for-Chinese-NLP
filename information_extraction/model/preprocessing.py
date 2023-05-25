@@ -149,7 +149,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
     total_for_sample_ratio = {i: 0 for i in base_config.ner_type}
     total_num = 0
     debug_for_sample_ratio["Total Ratio"] = 0
-    AUGMENTATION_LIMIT = 3  # 2: 2倍
+    AUGMENTATION_LIMIT = 2  # 2: same
     augmentation_counter = AUGMENTATION_LIMIT - 1
 
     if data_type not in ["train", "evaluation", "test"]:
