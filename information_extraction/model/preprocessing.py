@@ -1,9 +1,9 @@
 import os
 import sys
 import json
-from dataclasses import dataclass, field, asdict
-from typing import Optional, List, Any, Dict, Union, Tuple
-from paddlenlp.trainer import TrainingArguments
+
+from typing import Optional, List, Any, Dict, Union, Tuple, Iterator
+
 import numpy as np
 from collections import defaultdict
 import pandas as pd
@@ -25,75 +25,13 @@ SOLATIUM_WORD = ["精神", "慰撫", "撫慰", "非財產"]
 MUST_SAMPLE_LIST = ["元"]  # 有提到錢的樣本都一定要sample進來
 
 
-@dataclass
-class DataArguments:
-    """
-    Arguments pertaining to what data we are going to input our model for training and eval.
-    Using `PdArgumentParser` we can turn this class into argparse arguments to be able to
-    specify them on the command line.
-    """
-
-    train_path: str = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
-    )
-
-    dev_path: str = field(default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."})
-
-    max_seq_len: Optional[int] = field(
-        default=512,
-        metadata={
-            "help": "The maximum total input sequence length after tokenization. Sequences longer "
-            "than this will be truncated, sequences shorter will be padded."
-        },
-    )
-
-    down_sampling_ratio: Optional[float] = field(
-        default=0.3,
-        metadata={"help": "The drop out ratio of negative samples."},
-    )
-    read_data_method: Optional[str] = field(
-        default="chunk",
-        metadata={
-            "help": "The argument determines how to deal with the input content. If full, "
-            "it will read the full content and send it as input to the model. If chunk, it will"
-            "cut the content into several chunks and send them as an individual observation to the model."
-        },
-    )
-
-
-@dataclass
-class ModelArguments:
-    """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
-    """
-
-    model_name_or_path: Optional[str] = field(
-        default="uie-base",
-        metadata={
-            "help": "Path to pretrained model, such as 'uie-base', 'uie-tiny', "
-            "'uie-medium', 'uie-mini', 'uie-micro', 'uie-nano', 'uie-base-en', "
-            "'uie-m-base', 'uie-m-large', or finetuned model path."
-        },
-    )
-    export_model_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "Path to directory to store the exported inference model."},
-    )
-    multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
-
-
-# information extraction (IE) training arguments
-@dataclass
-class IETrainingArguments(TrainingArguments):
-    output_dir: str = field(default=None, metadata={"help": "The path where the checkpoint of the model is saved."})
-
-    def __post_init__(self):
-        if base_config.root_dir and self.output_dir is None:
-            self.output_dir = base_config.root_dir + base_config.train_result_path
-        return super().__post_init__()
-
-
 def random_choose(prob: float = 0.5) -> bool:
+    """根據機率隨機產生 True/False
+    Args:
+        prob (float, optional): 產生 True 的機率值. Defaults to 0.5.
+
+    Returns: bool.
+    """
     criterion = np.random.uniform(0, 1, 1)[0]
     return True if criterion < prob else False
 
@@ -127,11 +65,11 @@ def decide_if_do_augmentation(
     return False
 
 
-def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train") -> Dict[str, str]:
+def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train") -> Iterator[Dict[str, str]]:
     """
     Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
-    Model Input Format: [CLS] Prompt [SEP] Content [SEP].
-    Result-Cross case: result cross interval of each subcontent.
+        Model Input Format: [CLS] Prompt [SEP] Content [SEP].
+        Result-Cross case: result cross interval of each subcontent.
 
     Args:
         data_path (str): 資料路徑（轉換後的training/eval/testing資料）。
@@ -256,6 +194,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
             logger.error(e)
 
 
+# Delete
 def read_full_data(data_path: str) -> Tuple[Dict[str, str], int]:
     logger.info(f"Read Full Data method is selected. The max_seq_len argument will be ignore...")
     with open(data_path, "r", encoding="utf-8") as f:
@@ -268,6 +207,7 @@ def read_full_data(data_path: str) -> Tuple[Dict[str, str], int]:
             }
 
 
+# Delete
 def get_max_content_len(data_path_list: List[str]) -> int:
     max_content_len = -1
     for each_data_path in data_path_list:
@@ -282,7 +222,7 @@ def get_max_content_len(data_path_list: List[str]) -> int:
 def drift_offsets_mapping(offset_mapping: Tuple[Tuple[int, int]]) -> Tuple[List[List[int]], int]:
     """Scale the offset_mapping in tokenization output to align with the prompt learning format.
 
-    Note: 因為 tokenize 後有些字會被 tokenize 在一起，所以 index 會和原本的有所差異，因此需做調整，將 tokenize 前後的 index 對齊。
+    Note: 因為 tokenization 後有些字會被 tokenize 在一起，所以 index 會和原本的有所差異，因此需做調整，將 tokenize 前後的 index 對齊。
 
     Args:
         offset_mapping (Tuple[Tuple[int, int]]): Tokenization outpu. Use argument 'return_offsets_mapping=True'.
@@ -335,11 +275,18 @@ def convert_to_uie_format(
     max_seq_len: int = 512,
     multilingual: Optional[bool] = False,
 ) -> Dict[str, Union[str, float]]:
-    """此方法主要做兩件事情：
-    1. Tokenization.
-    2. 將 result_list 的 start/end index 對齊 tokenization 後的位置。
+    """此方法功能如下：
+        1. Tokenization.
+        2. 將 result_list 的 start/end index 對齊 tokenization 後的位置。
 
-    Note: 在 finetune.py 中，設定此方法為預設 Callback Function，可根據任務或模型換成自定義方法。
+    Note:
+        在 finetune.py 中，設定此方法為預設 Callback Function，可根據任務或模型換成自定義方法。
+
+    ** Tokenize Bug **
+        - Tokenizer 可能會因為中文的一些字 Unknown 導致 Bug。
+        - 可參考：https://github.com/PaddlePaddle/PaddleNLP/issues?q=is%3Aissue+is%3Aopen+out+of+range+
+        - 實測後可能有 Bug 的模型包含 xlnet, roformer.
+        - 實測後正常的模型包含 uie, bert.
 
     Args:
         data (Dict[str, str], optional): 切片後的文本，通常來自於 () 的結果
@@ -416,6 +363,7 @@ def convert_to_uie_format(
     )
 
 
+# Delete
 def convert_to_full_data_format(
     data: Dict[str, str],
     tokenizer: Any,
@@ -531,6 +479,7 @@ def convert_to_full_data_format(
     }
 
 
+# Delete
 def get_base_config():
     return base_config
 
