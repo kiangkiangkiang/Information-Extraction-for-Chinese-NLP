@@ -8,12 +8,6 @@ from decimal import Decimal
 import argparse
 
 
-def add_negative_samples():
-    # TODO add negative when result == []
-    # duplicate?
-    pass
-
-
 def do_split(
     dataset: List[dict],
     split_ratio: List[int] = [0.8, 0.1, 0.1],
