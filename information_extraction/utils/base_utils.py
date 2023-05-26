@@ -7,6 +7,8 @@ import paddle
 import random
 from typing import List, Optional, Dict
 from paddlenlp.utils.log import logger
+
+# TODO merge data 和 split data into train/test 時，import exceptions會有問題 （相對路徑）
 from exceptions import ConvertingError
 import re
 
@@ -61,9 +63,9 @@ def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
         }
         for label_result in data["annotations"][0]["result"]:
             if label_result["type"] != "labels":
+                breakpoint()
                 raise ValueError(
-                    "Now we only deal with NER tasks, \
-                        which means the type of label studio result is 'labels'."
+                    "Now we only deal with NER tasks, " "which means the type of label studio result is 'labels'."
                 )
 
             uie_format[label_result["value"]["labels"][0]]["result_list"].append(
