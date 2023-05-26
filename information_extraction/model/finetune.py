@@ -18,6 +18,8 @@ from functools import partial
 from paddlenlp.datasets import load_dataset
 from inference import *
 import os
+from dataclasses import dataclass, field, asdict
+from paddlenlp.trainer import TrainingArguments
 
 
 from paddle.io import DataLoader
@@ -29,13 +31,76 @@ os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazona
 os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
 
+
+@dataclass
+class DataArguments:
+    """
+    Arguments pertaining to what data we are going to input our model for training and eval.
+    Using `PdArgumentParser` we can turn this class into argparse arguments to be able to
+    specify them on the command line.
+    """
+
+    train_path: str = field(
+        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
+    )
+
+    dev_path: str = field(default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."})
+
+    max_seq_len: Optional[int] = field(
+        default=512,
+        metadata={
+            "help": "The maximum total input sequence length after tokenization. Sequences longer "
+            "than this will be truncated, sequences shorter will be padded."
+        },
+    )
+
+    read_data_method: Optional[str] = field(
+        default="chunk",
+        metadata={
+            "help": "The argument determines how to deal with the input content. If full, "
+            "it will read the full content and send it as input to the model. If chunk, it will"
+            "cut the content into several chunks and send them as an individual observation to the model."
+        },
+    )
+
+
+@dataclass
+class ModelArguments:
+    """
+    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
+    """
+
+    model_name_or_path: Optional[str] = field(
+        default="uie-base",
+        metadata={
+            "help": "Path to pretrained model, such as 'uie-base', 'uie-tiny', "
+            "'uie-medium', 'uie-mini', 'uie-micro', 'uie-nano', 'uie-base-en', "
+            "'uie-m-base', 'uie-m-large', or finetuned model path."
+        },
+    )
+    export_model_dir: Optional[str] = field(
+        default=None,
+        metadata={"help": "Path to directory to store the exported inference model."},
+    )
+    multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
+
+
+# information extraction (IE) training arguments
+@dataclass
+class IETrainingArguments(TrainingArguments):
+    output_dir: str = field(default=None, metadata={"help": "The path where the checkpoint of the model is saved."})
+
+    def __post_init__(self):
+        if base_config.root_dir and self.output_dir is None:
+            self.output_dir = base_config.root_dir + base_config.train_result_path
+        return super().__post_init__()
+
+
 # main function
-# TODO 不處理多語言
 def finetune(
     train_path: str,
     dev_path: str,
     max_seq_len: int = 512,
-    down_sampling_ratio: float = 0.5,
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
     multilingual: Optional[bool] = False,
@@ -169,7 +234,6 @@ def finetune(
                     n_epoch=training_args.num_train_epochs,
                     optimizer=trainer.optimizers,
                     train_data_len=len(train_dataset),
-                    down_sampling_ratio=down_sampling_ratio,
                 ),
             )
 
@@ -238,7 +302,6 @@ if __name__ == "__main__":
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
         max_seq_len=data_args.max_seq_len,
-        down_sampling_ratio=data_args.down_sampling_ratio,
         model_name_or_path=model_args.model_name_or_path,
         read_data_method=data_args.read_data_method,
         export_model_dir=model_args.export_model_dir,

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import paddle
 import random
-from typing import List, Optional
+from typing import List, Optional, Dict
 from paddlenlp.utils.log import logger
 from exceptions import ConvertingError
 import re
@@ -25,6 +25,7 @@ def set_seed(seed: int) -> None:
     Args:
         seed (int): 固定種子
     """
+
     paddle.seed(seed)
     random.seed(seed)
     np.random.seed(seed)
@@ -32,19 +33,20 @@ def set_seed(seed: int) -> None:
 
 def shuffle_data(data: list) -> list:
     """shuffle data"""
+
     indexes = np.random.permutation(len(data))
     return [data[i] for i in indexes]
 
 
 def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
-    """轉換格式邏輯程式，將label studio output轉換成UIE模型所吃的格式。
+    """轉換格式邏輯程式，將 label studio output 轉換成 UIE 模型所吃的格式。
 
     Args:
         dataset (List[dict]): label studio output的json檔。
         is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
 
     Raises:
-        ValueError: 任務格式錯誤（此邏輯程式只處理NER任務，有Relation標籤無法處理）。
+        ValueError: 任務格式錯誤（此邏輯程式只處理 NER 任務，有 Relation 標籤無法處理）。
 
     Returns:
         List[dict]: 模型所吃的訓練格式。
@@ -77,6 +79,16 @@ def convert_format(dataset: List[dict], is_shuffle: bool = True) -> List[dict]:
 
 
 def merge_json(json_folder_path: str, output_path: Optional[str] = "./") -> None:
+    """Merge JSON files.
+
+    Args:
+        json_folder_path (str): The folder where all JSON files locate.
+        output_path (Optional[str], optional): Where the merged JSON file locates. Defaults to "./".
+
+    Raises:
+        ValueError: File not found.
+    """
+
     merge_result = []
     counter = 0
     if os.path.exists(json_folder_path):
@@ -109,7 +121,17 @@ def merge_json(json_folder_path: str, output_path: Optional[str] = "./") -> None
         raise ValueError(f"Cannot found the path {json_folder_path}")
 
 
-def read_json(json_file: str):
+def read_json(json_file: str) -> None:
+    """Read JSON files.
+
+    Args:
+        json_file (str): JSON files path and name.
+
+    Raises:
+        ValueError: File not found.
+
+    """
+
     if os.path.exists(json_file):
         result = []
         with open(json_file, "r", encoding="utf-8") as infile:
@@ -122,7 +144,19 @@ def read_json(json_file: str):
         raise ValueError(f"Cannot found the path {json_file}")
 
 
-def is_repeat_content_exist(json_file: str):
+def is_repeat_content_exist(json_file: str) -> dict:
+    """Check if there are duplicate cases in the JSON file.
+
+    Args:
+        json_file (str): JSON file locate and name. Must have the same format as label studio output and ''jid' attributes exist.
+
+    Raises:
+        ValueError: File not found.
+
+    Returns:
+        dict: The information of duplicate cases in JSON file.
+    """
+
     if os.path.exists(json_file):
         with open(json_file, "r", encoding="utf-8") as infile:
             for f in infile:
@@ -146,7 +180,24 @@ def is_repeat_content_exist(json_file: str):
 
 
 # remove "\n" and " "
-def regularize_content(single_json: str, regularize_text=["\n", " ", "\u3000"], special_result_case=[r"\\n"]):
+def regularize_content(
+    single_json: str,
+    regularize_text: Optional[List[str]] = ["\n", " ", "\u3000"],
+    special_result_case: Optional[List[str]] = [r"\\n"],
+) -> dict:
+    """Regularize the keys of 'content' in the JSON file.
+        The content may have several special tokens such as '\n', which does not want to be exist in the content.
+        Therefore, this function will remove the special tokens and adjust the relatively index in the JSON file.
+
+    Args:
+        single_json (str): A JSON file which wants to be regularized. This file must be the same format with label studio output, and have the labels of NER tasks such as 'start' and 'end' index.
+        regularize_text ((Optional[List[str]], optional): List of the special tokens. Each string in the list must be only one character (len(TOKEN) == 1).  Defaults to ["\n", " ", "\u3000"].
+        special_result_case (Optional[List[str]], optional): Other special case which cannot be regularize in regularize_text. Defaults to [r"\n"].
+
+    Returns:
+        dict: Regularized file.
+    """
+
     tmp = ""
     for i in regularize_text:
         tmp = tmp + i + "|"
@@ -198,8 +249,20 @@ def regularize_content(single_json: str, regularize_text=["\n", " ", "\u3000"], 
 
 
 def regularize_json_file(
-    json_file: str, output_path: str = "./", regularize_text=["\n", " ", "\u3000"], special_result_case=[r"\\n"]
+    json_file: str,
+    output_path: str = "./",
+    regularize_text: Optional[List[str]] = ["\n", " ", "\u3000"],
+    special_result_case: Optional[List[str]] = [r"\\n"],
 ) -> None:
+    """Regularize the JSON file list.
+
+    Args:
+        json_file (str): A JSON file which contains several JSONs which want to be regularized.
+        output_path (str, optional): The path of regularized JSON. Defaults to "./".
+        regularize_text (Optional[List[str]], optional): List of the special tokens. Each string in the list must be only one character (len(TOKEN) == 1).  Defaults to ["\n", " ", "\u3000"].
+        special_result_case (Optional[List[str]], optional): Other special case which cannot be regularize in regularize_text. Defaults to [r"\n"].
+    """
+
     def test_regularized_data(regularized_data: dict) -> bool:
         for i in range(len(regularized_data["annotations"][0]["result"])):
             start = regularized_data["annotations"][0]["result"][i]["value"]["start"]
