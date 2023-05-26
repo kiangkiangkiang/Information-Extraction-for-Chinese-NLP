@@ -267,7 +267,7 @@ def finetune(
 
     # inference for testing data
     # 實驗程式 務必之後刪除
-    do_inference = False
+    do_inference = True
     if is_experiment & do_inference:
         experiment_inference()
 

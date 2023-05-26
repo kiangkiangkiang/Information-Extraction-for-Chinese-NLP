@@ -239,7 +239,7 @@ if __name__ == "__main__":
 
 
 def experiment_inference(
-    data_path: str = "../information_extraction/data/testing_data.txt",
+    data_path: str = "../information_extraction/data/first_stage_data/testing_data.txt",
     task_path: str = "../information_extraction/results/checkpoint",
     schema: List[str] = ["精神慰撫金額", "醫療費用", "薪資收入"],
     do_compute_auc: bool = True,
