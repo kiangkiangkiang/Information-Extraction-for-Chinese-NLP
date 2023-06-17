@@ -22,18 +22,23 @@ class DataArguments:
     specify them on the command line.
     """
 
-    train_path: str = field(
-        default="./data/model_input_data/train.txt",
+    dataset_path: str = field(
+        default="./data/model_input_data/",
+        metadata={"help": "Local dataset directory including train.txt, dev.txt and test.txt (optional)."},
+    )
+
+    train_file: str = field(
+        default="train.txt",
         metadata={"help": "The name of the dataset to use (via the datasets library)."},
     )
 
-    dev_path: str = field(
-        default="./data/model_input_data/dev.txt",
+    dev_file: str = field(
+        default="dev.txt",
         metadata={"help": "The name of the dataset to use (via the datasets library)."},
     )
 
-    test_path: str = field(
-        default="./data/model_input_data/test.txt",
+    test_file: str = field(
+        default="test.txt",
         metadata={"help": "The name of the dataset to use (via the datasets library)."},
     )
 
@@ -68,9 +73,10 @@ class ModelArguments:
 
 # main function
 def finetune(
-    train_path: str,
-    dev_path: str = None,
-    test_path: str = None,
+    dataset_path: str,
+    train_file: str,
+    dev_file: str = None,
+    test_file: str = None,
     max_seq_len: int = 512,
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
@@ -84,6 +90,7 @@ def finetune(
     trainer_callbacks=[DefaultFlowCallback],
 ) -> None:
 
+    train_path, dev_path, test_path = (os.path.join(dataset_path, file) for file in (train_file, dev_file, test_file))
     # Path Checking
     if not os.path.exists(train_path):
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
@@ -115,10 +122,9 @@ def finetune(
             read_data_by_chunk,
             data_path=data,
             max_seq_len=max_seq_len,
-            data_type=data_type,
             lazy=False,
         )
-        for data, data_type in zip((train_path, dev_path, test_path), ("train", "dev", "test"))
+        for data in (train_path, dev_path, test_path)
     )
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = UIE.from_pretrained(model_name_or_path)
@@ -204,9 +210,10 @@ if __name__ == "__main__":
     training_args.print_config(data_args, "Data")
 
     finetune(
-        train_path=data_args.train_path,
-        dev_path=data_args.dev_path,
-        test_path=data_args.test_path,
+        dataset_path=data_args.dataset_path,
+        train_file=data_args.train_file,
+        dev_file=data_args.dev_file,
+        test_file=data_args.test_file,
         max_seq_len=data_args.max_seq_len,
         model_name_or_path=model_args.model_name_or_path,
         export_model_dir=model_args.export_model_dir,

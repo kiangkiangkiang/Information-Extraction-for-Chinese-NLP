@@ -31,8 +31,8 @@ def shuffle_data(data: list) -> list:
     return [data[i] for i in indexes]
 
 
-def convert_format(dataset: List[dict], ner_type: List[str], is_shuffle: bool = True) -> List[dict]:
-    # TODO docstring 增加變數ner_type
+def convert_format(dataset: List[dict], entity_type: List[str], is_shuffle: bool = True) -> List[dict]:
+    # TODO docstring 增加變數entity_type
     """轉換格式邏輯程式，將 label studio output 轉換成 UIE 模型所吃的格式。
 
     Args:
@@ -51,7 +51,7 @@ def convert_format(dataset: List[dict], ner_type: List[str], is_shuffle: bool = 
     for data in dataset:
         uie_format = {
             output_type: {"content": data["data"]["text"], "result_list": [], "prompt": output_type}
-            for output_type in ner_type
+            for output_type in entity_type
         }
         for label_result in data["annotations"][0]["result"]:
             if label_result["type"] != "labels":

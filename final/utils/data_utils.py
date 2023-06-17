@@ -1,21 +1,9 @@
-import os
-import sys
 import json
-
 from typing import Optional, List, Any, Dict, Union, Tuple, Iterator
-
 import numpy as np
-
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
-
 from paddlenlp.utils.log import logger
-from paddle.io import BatchSampler, DataLoader
-from utils.exceptions import DataError, PreprocessingError
-from config import BaseConfig
-
-base_config = BaseConfig()
+from paddle.io import BatchSampler, DataLoader, DistributedBatchSampler
+from .exceptions import DataError, PreprocessingError
 
 
 def random_choose(prob: float = 0.5) -> bool:
@@ -29,7 +17,7 @@ def random_choose(prob: float = 0.5) -> bool:
     return True if criterion < prob else False
 
 
-def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train") -> Iterator[Dict[str, str]]:
+def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[str, str]]:
     """
     Summary: 讀「透過 utils/split_labelstudio.py 分割的 .txt檔」，此 txt 檔格式和 UIE官方提供的doccano.py轉換後的格式一樣。
         Model Input Format: [CLS] Prompt [SEP] Content [SEP].
@@ -46,9 +34,6 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512, data_type="train"
     Yields:
         Iterator[Dict[str, str]]: 每個batch所吃的原始文本（Before tokenization）。
     """
-
-    if data_type not in ["train", "dev", "test"]:
-        raise ValueError(f"data_type must be in ['train', 'dev', 'test'].")
 
     with open(data_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -247,7 +232,7 @@ def convert_to_uie_format(
     }
 
 
-def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
+def create_data_loader(dataset, mode="train", batch_size=16, trans_fn=None, shuffle=False):
     """
     Create dataloader.
     Args:
@@ -260,27 +245,11 @@ def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
     """
     if trans_fn:
         dataset = dataset.map(trans_fn)
-    sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+
+    shuffle = True if mode == "train" else False
+    if mode == "train":
+        sampler = DistributedBatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    else:
+        sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
     dataloader = DataLoader(dataset, batch_sampler=sampler, return_list=True)
     return dataloader
-
-
-""" Tokenizer list out of range bug
-a = '當時根據病例記錄應仍臥床可坐輪椅，但仍有傷口需要照護。臥床病人因呼吸道清除功能失效及排尿能力不完整時，就容易出現感染問題。根據2014年CriticalCareNurseVol34,No.6（附件2）文獻建議，出院後壓瘡照護需提供病人足夠熱量、蛋白質和平衡電解質攝取量，使病人身體皮膚組織增生和增強防禦能力，同時藉由皮膚滋潤與減壓措施才能預防壓瘡加劇。病人出院後於門診追蹤及105年9月19日至急診更換鼻胃管時均可坐輪椅，但因病人分別於105年7月22日及105年12月31日至106年1月14日因尿道感染、肺炎、褥瘡感染及惡病質等原因於中國醫藥大學附設醫院住院，出院後完全臥床，所以病人更容易出現呼吸道清除功能失效及排尿能力不完整，需藉由照護提供營養，翻身與痰液清除及預防脫水等才能避免病情再發生及惡化，治療出院後12天於106年1月26日因敗血症休克呼吸哀竭再次住院，除肺炎外，褥瘡感染及惡病質情形均相當嚴重，雖經院方管灌營養、傷口照護、抗生素使用與呼吸器支持，病人仍因多重器官衰竭心跳停止於2月23日上午8：51分宣布死亡。根據2009年外傷（Injury）雜誌（附件3）整合性文章認為多發傷患者的死'  
-len(a)
-from paddlenlp.transformers import AutoTokenizer
-t = AutoTokenizer.from_pretrained("roformer-chinese-base")
-t('無文本', return_offsets_mapping=True)
-
-
-a = '當時根據病例記錄應仍臥床可坐輪椅，但仍有傷口需要照護。臥床病人因呼吸道清除功能失效及排尿能力不完整時，就容易出現感染問題。根據2014年CriticalCareNurseVol34,No.6（附件2）文獻建議，出院後壓瘡照護需提供病人足夠熱量、蛋白質和平衡電解質攝取量，使病人身體皮膚組織增生和增強防禦能力，同時藉由皮膚滋潤與減壓措施才能預防壓瘡加劇。病人出院後於門診追蹤及105年9月19日至急診更換鼻胃管時均可坐輪椅，但因病人分別於105年7月22日及105年12月31日至106年1月14日因尿道感染、肺炎、褥瘡感染及惡病質等原因於中國醫藥大學附設醫院住院，出院後完全臥床，所以病人更容易出現呼吸道清除功能失效及排尿能力不完整，需藉由照護提供營養，翻身與痰液清除及預防脫水等才能避免病情再發生及惡化，治療出院後12天於106年1月26日因敗血症休克呼吸哀竭再次住院，除肺炎外，褥瘡感染及惡病質情形均相當嚴重，雖經院方管灌營養、傷口照護、抗生素使用與呼吸器支持，病人仍因多重器官衰竭心跳停止於2月23日上午8：51分宣布死亡。根據2009年外傷（Injury）雜誌（附件3）整合性文章認為多發傷患者的死'  
-from paddlenlp.transformers import AutoTokenizer
-t_pd = AutoTokenizer.from_pretrained("roformer-chinese-base")
-t_pd(a)['input_ids']
-from paddlenlp.transformers.tokenizer_utils import normalize_chars
-a2 = normalize_chars(a)
-a
-a2
-t_pd(a2, return_offsets_mapping=True)
-t_pd.convert_ids_to_tokens(t_pd(a)['input_ids'])
-"""

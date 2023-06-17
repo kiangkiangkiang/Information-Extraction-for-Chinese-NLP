@@ -1,5 +1,5 @@
 from utils.json_utils import convert_format, shuffle_data, set_seed, regularize_json_file
-from config.base_config import NER_type
+from config.base_config import entity_type
 from paddlenlp.utils.log import logger
 from typing import List, Tuple
 import json
@@ -39,9 +39,9 @@ def do_split(
         raise ValueError(f"Number of training data is too small {p1} <= 0")
 
     return (
-        convert_format(dataset[:p1], NER_type, is_shuffle),
-        convert_format(dataset[p1:p2], NER_type, is_shuffle),
-        convert_format(dataset[p2:], NER_type, is_shuffle),
+        convert_format(dataset[:p1], entity_type, is_shuffle),
+        convert_format(dataset[p1:p2], entity_type, is_shuffle),
+        convert_format(dataset[p2:], entity_type, is_shuffle),
     )
 
 
@@ -135,13 +135,13 @@ if __name__ == "__main__":
     parser.add_argument("--is_regularize_data", default="True", type=str, help="The path of data that you wanna save.")
     args = parser.parse_args()
 
-    regular_result = None
+    regularized_result = None
     if eval(args.is_regularize_data):
         regularized_result = regularize_json_file(json_file=args.labelstudio_file, out_variable=True)
 
     split_labelstudio(
         labelstudio_file=args.labelstudio_file,
-        labelstudio_list=regular_result,
+        labelstudio_list=regularized_result,
         save_dir=args.save_dir,
         seed=args.seed,
         split_ratio=args.split_ratio,
