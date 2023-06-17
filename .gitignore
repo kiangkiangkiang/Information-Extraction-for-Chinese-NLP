@@ -3,3 +3,4 @@ information_extraction/model/mlruns
 dev/mlruns
 mlruns
 dev/install.sh
+final/results
