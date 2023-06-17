@@ -64,3 +64,12 @@ python run_infer.py ...
 ``` python
 python main_app.py ...
 ```
+
+
+
+# TODO
+1. inference
+2. predict
+3. config
+4. mlflow (check train eval by class)
+5. unit test
