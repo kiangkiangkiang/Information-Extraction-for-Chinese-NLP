@@ -56,7 +56,14 @@ python run_eval.py \
 ## Inference
 
 ``` python
-python run_infer.py ...
+python run_infer.py \
+    --data_path ./data/model_infer_data/example.txt \
+    --save_dir ./results/inference_results/ \
+    --precision fp16 \
+    --batch_size 16 \
+    --task_path ./results/checkpoint/model_best \
+    --select_key text probability \
+    --select_strategy max 
 ```
 
 ## Prediction

@@ -1,4 +1,5 @@
 from paddle.static import InputSpec
+from dataclasses import dataclass, field
 
 entity_type = ["精神慰撫金額", "醫療費用", "薪資收入"]
 

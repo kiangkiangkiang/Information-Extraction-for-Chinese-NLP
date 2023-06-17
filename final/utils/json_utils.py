@@ -92,7 +92,7 @@ def merge_json(json_folder_path: str, output_path: Optional[str] = "./") -> None
             # read
             for each_json in all_json_file:
                 logger.info(f"Merging the file {each_json}...")
-                with open(json_folder_path + "/" + each_json, "r", encoding="utf-8") as infile:
+                with open(os.path.join(json_folder_path, each_json), "r", encoding="utf-8") as infile:
                     for f in infile:
                         all_content = json.loads(f)
                         logger.info(f"Length of {each_json} is {len(all_content)}.")
@@ -103,7 +103,7 @@ def merge_json(json_folder_path: str, output_path: Optional[str] = "./") -> None
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
 
-            with open(output_path + "/merged_data.json", "w", encoding="utf-8") as outfile:
+            with open(os.path.join(output_path, "merged_data.json"), "w", encoding="utf-8") as outfile:
                 jsonString = json.dumps(merge_result, ensure_ascii=False)
                 outfile.write(jsonString)
 
@@ -296,6 +296,6 @@ def regularize_json_file(
         if not os.path.exists(output_path):
             os.makedirs(output_path)
 
-        with open(output_path + "/regularized_data.json", "w", encoding="utf-8") as outfile:
+        with open(os.path.join(output_path, "regularized_data.json"), "w", encoding="utf-8") as outfile:
             jsonString = json.dumps(result_list, ensure_ascii=False)
             outfile.write(jsonString)

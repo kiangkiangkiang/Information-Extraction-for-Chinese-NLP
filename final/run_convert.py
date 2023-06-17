@@ -132,7 +132,13 @@ if __name__ == "__main__":
         type=str,
         help="Whether to shuffle the labeled dataset, defaults to True.",
     )
-    parser.add_argument("--is_regularize_data", default="True", type=str, help="The path of data that you wanna save.")
+    parser.add_argument(
+        "--is_regularize_data",
+        choices=["True", "False"],
+        default="True",
+        type=str,
+        help="The path of data that you wanna save.",
+    )
     args = parser.parse_args()
 
     regularized_result = None
