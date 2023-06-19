@@ -7,8 +7,8 @@ for i in range(6):
         f"python3 ../../information_extraction/model/finetune.py  \
         --device gpu:1 \
         --logging_steps 10 \
-        --save_steps 500 \
-        --eval_steps 500 \
+        --save_steps 600 \
+        --eval_steps 600 \
         --seed 1000 \
         --model_name_or_path uie-base  \
         --train_path ../../information_extraction/data/final_data/training_data.txt \
