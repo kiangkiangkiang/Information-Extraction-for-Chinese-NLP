@@ -53,26 +53,42 @@ def mean_arrange(data, length, split_type=["training_data.txt", "eval_data.txt",
     # training_data
     new_data = defaultdict(list)
     remain_list = defaultdict(list)
+    n_negative_sample = len(data["negative_sample"])
     for k in data:
         np.random.shuffle(data[k])
-        new_data["training_data"].extend(data[k][:length])
-        remain_list[k] = len(data[k]) - length
-    print(f"training len: {len(new_data['training_data'])}")
-    np.random.shuffle(new_data["training_data"])
+        if k != "negative_sample":
+            new_data["training_data"].extend(data[k][:length])
+            remain_list[k] = len(data[k]) - length
 
     # eval
     for k in data:
-        tmp_len = int(remain_list[k] / 2)
-        new_data["eval_data"].extend(data[k][length : (length + tmp_len)])
-        remain_list[k] = length + tmp_len
-    print(f"eval len: {len(new_data['eval_data'])}")
+        if k != "negative_sample":
+            tmp_len = int(remain_list[k] / 2)
+            new_data["eval_data"].extend(data[k][length : (length + tmp_len)])
+            remain_list[k] = length + tmp_len
+
     np.random.shuffle(new_data["eval_data"])
 
     # test
     for k in data:
-        new_data["testing_data"].extend(data[k][remain_list[k] :])
-    print(f"testing len: {len(new_data['testing_data'])}")
+        if k != "negative_sample":
+            new_data["testing_data"].extend(data[k][remain_list[k] :])
+
     np.random.shuffle(new_data["testing_data"])
+
+    # add negative_sample
+    p1 = int(n_negative_sample * 0.8)
+    p2 = p1 + int(n_negative_sample * 0.1)
+    new_data["training_data"].extend(data["negative_sample"][:p1])
+    np.random.shuffle(new_data["training_data"])
+    new_data["eval_data"].extend(data["negative_sample"][p1:p2])
+    np.random.shuffle(new_data["eval_data"])
+    new_data["testing_data"].extend(data["negative_sample"][p2:])
+    np.random.shuffle(new_data["testing_data"])
+
+    print(f"training len: {len(new_data['training_data'])}")
+    print(f"eval len: {len(new_data['eval_data'])}")
+    print(f"testing len: {len(new_data['testing_data'])}")
     return new_data
 
 
@@ -101,7 +117,7 @@ if __name__ == "__main__":
     read_path = "./Chinese-Verdict-NLP/information_extraction/data/final_data/"
     write_path = "./Chinese-Verdict-NLP/information_extraction/data/arrange_final_data_mean/"
     type_counter, all_data = read_all_data(read_path)
-    min_count = min(type_counter.values())
+    min_count = int(min(type_counter.values()) * 0.8)
     # new_data = mean_plus_arrange(all_data, min_count)
     new_data = mean_arrange(all_data, min_count)
     write_result(new_data, write_path)

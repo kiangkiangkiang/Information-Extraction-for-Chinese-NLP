@@ -265,9 +265,19 @@ def finetune(
             eval_metrics = mlflow_handler.mlflow_evaluate(trainer)
         else:
             eval_metrics = trainer.evaluate(eval_dataset=test_ds)
-        # breakpoint()
-
-        # with open....
+        run_all = True
+        if run_all:
+            with open(
+                "../../information_extraction/model/result_record/"
+                + os.path.split(training_args.output_dir)[-1]
+                + ".txt",
+                "w",
+                encoding="utf8",
+            ) as f:
+                for eval_index_type, value in eval_metrics.items():
+                    f.write(eval_index_type + "\t")
+                    f.write(str(value))
+                    f.write("\n")
         #    for eval_index_type, value in eval_metrics:
         # 改變outdir name
         #
