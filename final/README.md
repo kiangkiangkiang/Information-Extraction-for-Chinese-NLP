@@ -73,10 +73,17 @@ python main_app.py ...
 ```
 
 
+# 已完成
 
-# TODO
-1. inference
-2. predict
-3. config
-4. mlflow (check train eval by class)
-5. unit test
+1. utils 們
+2. run_train.py
+3. run_eval.py
+
+# 未完成
+
+1. run_infer.py (# TODO select_key還沒實作好，下一次從這邊開始做)
+2. 看能不能實驗的時候 也能看所有指標
+3. mlflow
+4. 整理 config
+5. 整理所有 function docstring 和程式碼命名等等
+6. test case
