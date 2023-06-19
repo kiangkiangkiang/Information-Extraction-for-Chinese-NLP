@@ -44,6 +44,10 @@ class DataArguments:
         default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
     )
 
+    test_path: str = field(
+        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
+    )
+
     dev_path: str = field(default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."})
 
     max_seq_len: Optional[int] = field(
@@ -100,6 +104,7 @@ class IETrainingArguments(TrainingArguments):
 def finetune(
     train_path: str,
     dev_path: str,
+    test_path: str,
     max_seq_len: int = 512,
     model_name_or_path: str = "uie-base",
     export_model_dir: Optional[str] = None,
@@ -246,12 +251,27 @@ def finetune(
         trainer.save_state()
 
     # Evaluate and tests model
+    test_ds = load_dataset(
+        read_data,
+        data_path=test_path,
+        max_seq_len=max_seq_len,
+        data_type="test",
+        lazy=False,
+    )
+    test_ds = test_ds.map(convert_function)
+
     if training_args.do_eval:
         if MLFLOW:
             eval_metrics = mlflow_handler.mlflow_evaluate(trainer)
         else:
-            eval_metrics = trainer.evaluate()
-        trainer.log_metrics("eval", eval_metrics)
+            eval_metrics = trainer.evaluate(eval_dataset=test_ds)
+        # breakpoint()
+
+        # with open....
+        #    for eval_index_type, value in eval_metrics:
+        # 改變outdir name
+        #
+        trainer.log_metrics("test", eval_metrics)
 
     # export inference model
     if training_args.do_export:
@@ -267,7 +287,7 @@ def finetune(
 
     # inference for testing data
     # 實驗程式 務必之後刪除
-    do_inference = True
+    do_inference = False
     if is_experiment & do_inference:
         experiment_inference()
 
@@ -301,6 +321,7 @@ if __name__ == "__main__":
     finetune(
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
+        test_path=data_args.test_path,
         max_seq_len=data_args.max_seq_len,
         model_name_or_path=model_args.model_name_or_path,
         read_data_method=data_args.read_data_method,
