@@ -21,31 +21,6 @@ def read_all_data(path):
     return result, all_data
 
 
-def mean_arrange(data, length, split_type=["training_data.txt", "eval_data.txt", "testing_data.txt"]):
-    # training_data
-    new_data = defaultdict(list)
-    remain_list = defaultdict(list)
-    for k in data:
-        np.random.shuffle(data[k])
-        new_data["training_data"].extend(data[k][:length])
-        remain_list[k] = len(data[k]) - length
-    print(f"training len: {len(new_data['training_data'])}")
-
-    # eval
-    for k in data:
-        tmp_len = int(remain_list[k] / 2)
-        new_data["eval_data"].extend(data[k][length : (length + tmp_len)])
-        remain_list[k] = length + tmp_len
-    print(f"eval len: {len(new_data['eval_data'])}")
-
-    # test
-    for k in data:
-        new_data["testing_data"].extend(data[k][remain_list[k] :])
-    print(f"testing len: {len(new_data['testing_data'])}")
-
-    return new_data
-
-
 def mean_plus_arrange(data, length, split_type=["training_data.txt", "eval_data.txt", "testing_data.txt"]):
     # training_data
     new_data = defaultdict(list)
@@ -55,6 +30,7 @@ def mean_plus_arrange(data, length, split_type=["training_data.txt", "eval_data.
         new_data["training_data"].extend(data[k][:length])
         remain_list[k] = len(data[k]) - length
     print(f"training len: {len(new_data['training_data'])}")
+    np.random.shuffle(new_data["training_data"])
 
     # eval
     for k in data:
@@ -62,12 +38,41 @@ def mean_plus_arrange(data, length, split_type=["training_data.txt", "eval_data.
         new_data["eval_data"].extend(data[k][length : (length + tmp_len)])
         remain_list[k] = length + tmp_len
     print(f"eval len: {len(new_data['eval_data'])}")
+    np.random.shuffle(new_data["eval_data"])
 
     # test
     for k in data:
         new_data["testing_data"].extend(data[k][remain_list[k] :])
     print(f"testing len: {len(new_data['testing_data'])}")
+    np.random.shuffle(new_data["testing_data"])
 
+    return new_data
+
+
+def mean_arrange(data, length, split_type=["training_data.txt", "eval_data.txt", "testing_data.txt"]):
+    # training_data
+    new_data = defaultdict(list)
+    remain_list = defaultdict(list)
+    for k in data:
+        np.random.shuffle(data[k])
+        new_data["training_data"].extend(data[k][:length])
+        remain_list[k] = len(data[k]) - length
+    print(f"training len: {len(new_data['training_data'])}")
+    np.random.shuffle(new_data["training_data"])
+
+    # eval
+    for k in data:
+        tmp_len = int(remain_list[k] / 2)
+        new_data["eval_data"].extend(data[k][length : (length + tmp_len)])
+        remain_list[k] = length + tmp_len
+    print(f"eval len: {len(new_data['eval_data'])}")
+    np.random.shuffle(new_data["eval_data"])
+
+    # test
+    for k in data:
+        new_data["testing_data"].extend(data[k][remain_list[k] :])
+    print(f"testing len: {len(new_data['testing_data'])}")
+    np.random.shuffle(new_data["testing_data"])
     return new_data
 
 
@@ -97,6 +102,7 @@ if __name__ == "__main__":
     write_path = "./Chinese-Verdict-NLP/information_extraction/data/arrange_final_data_mean_plus/"
     type_counter, all_data = read_all_data(read_path)
     min_count = min(type_counter.values())
-    new_data = mean_plus_arrange(all_data, min_count)
+    # new_data = mean_plus_arrange(all_data, min_count)
+    new_data = mean_arrange(all_data, min_count)
     # write_result(new_data, write_path)
     # double_check(write_path)
