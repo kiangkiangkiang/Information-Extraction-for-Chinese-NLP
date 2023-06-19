@@ -99,10 +99,10 @@ def double_check(path):
 
 if __name__ == "__main__":
     read_path = "./Chinese-Verdict-NLP/information_extraction/data/final_data/"
-    write_path = "./Chinese-Verdict-NLP/information_extraction/data/arrange_final_data_mean_plus/"
+    write_path = "./Chinese-Verdict-NLP/information_extraction/data/arrange_final_data_mean/"
     type_counter, all_data = read_all_data(read_path)
     min_count = min(type_counter.values())
     # new_data = mean_plus_arrange(all_data, min_count)
     new_data = mean_arrange(all_data, min_count)
-    # write_result(new_data, write_path)
-    # double_check(write_path)
+    write_result(new_data, write_path)
+    double_check(write_path)
