@@ -3,6 +3,7 @@ from collections import defaultdict
 import json
 
 data = ["training_data.txt", "eval_data.txt", "testing_data.txt"]
+test = {"精神慰撫金額": 0, "醫療費用": 0, "薪資收入": 0}
 
 for d in data:
     all_data_true = {"精神慰撫金額": 0, "醫療費用": 0, "薪資收入": 0}
@@ -12,6 +13,7 @@ for d in data:
             json_content = json.loads(i.strip())
             if json_content["result_list"]:
                 all_data_true[json_content["prompt"]] += 1
+                test[json_content["prompt"]] += 1
             else:
                 all_data_false[json_content["prompt"]] += 1
     print(f"{d}: ")
@@ -19,3 +21,4 @@ for d in data:
     print(f"沒有 result 的: {all_data_false}")
     ratio = [all_data_true[k] / (all_data_true[k] + all_data_false[k]) for k in all_data_true]
     print(f"比例: {ratio}")
+    print(f"{test}")

@@ -16,7 +16,6 @@ from typing import Optional, List, Any, Callable, Dict, Union, Tuple, Literal
 from callbacks import *
 from functools import partial
 from paddlenlp.datasets import load_dataset
-from inference import *
 import os
 from dataclasses import dataclass, field, asdict
 from paddlenlp.trainer import TrainingArguments
@@ -30,6 +29,7 @@ is_experiment = True
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
 os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
+loss_weight = {}
 
 
 @dataclass
@@ -295,12 +295,6 @@ def finetune(
         except Exception as e:
             logger.error(f"Fail to export model. Error in export_model: {e.__class__.__name__}: {e}.")
 
-    # inference for testing data
-    # 實驗程式 務必之後刪除
-    do_inference = False
-    if is_experiment & do_inference:
-        experiment_inference()
-
 
 if __name__ == "__main__":
     base_config = get_base_config()
@@ -308,6 +302,12 @@ if __name__ == "__main__":
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     training_args.print_config(model_args, "Model")
     training_args.print_config(data_args, "Data")
+    loss_weight = {
+        "精神慰撫": model_args.loss_weight[0],
+        "醫療費用": model_args.loss_weight[1],
+        "薪資收入": model_args.loss_weight[2],
+    }
+    breakpoint()
 
     if base_config.root_dir:
         if data_args.train_path is None and training_args.do_train:
