@@ -50,6 +50,7 @@ def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_
     weight = paddle.to_tensor(weight, dtype="float32")
     loss_func.weight = weight
 
+    breakpoint()
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
