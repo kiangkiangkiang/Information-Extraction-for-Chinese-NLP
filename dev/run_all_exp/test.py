@@ -25,7 +25,7 @@ for opt in opts:
         --do_train \
         --do_eval \
         --do_export \
-        --this_optimizers {opt} \
+        --optimizers_name {opt} \
         --output_dir ../../information_extraction/results/ckp_toy_data_768_epochs5_seed_11_lr2e-5_opt{opt}\
         --overwrite_output_dir \
         --disable_tqdm True \
