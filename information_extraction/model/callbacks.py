@@ -39,6 +39,21 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
     return loss
 
 
+def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
+    # TODO add lambda for each group
+    breakpoint()
+    loss_func = nn.BCELoss()
+    start_ids, end_ids = labels
+    start_prob, end_prob = outputs
+    start_ids = cast(start_ids, "float32")
+    end_ids = cast(end_ids, "float32")
+    loss_start = loss_func(start_prob, start_ids)
+    loss_end = loss_func(end_prob, end_ids)
+    loss = (loss_start + loss_end) / 2.0
+    logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}")
+    return loss
+
+
 # metrics calculator
 def SpanEvaluator_metrics(result):
 
