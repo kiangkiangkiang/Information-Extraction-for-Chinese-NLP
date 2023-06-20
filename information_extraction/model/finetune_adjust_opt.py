@@ -26,7 +26,7 @@ from paddle.io import DataLoader
 
 # Add MLflow for experiment # change mlflow to False
 MLFLOW = False
-is_experiment = True
+is_experiment = False
 os.environ["MLFLOW_TRACKING_URI"] = "http://ec2-44-213-176-187.compute-1.amazonaws.com:7003"
 os.environ["MLFLOW_TRACKING_USERNAME"] = "luka"
 os.environ["MLFLOW_TRACKING_PASSWORD"] = "luka"
@@ -116,7 +116,7 @@ def finetune(
     ] = convert_to_uie_format,
     criterion=uie_loss_func,
     compute_metrics=SpanEvaluator_metrics,
-    optimizers: Optional[Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler]] = (None, None),
+    optimizers=None,
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
     set_device(training_args.device)
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         mlflow_handler.run_tags["os"] = sys.platform
         logger.debug("Success to set up mlflow.")
 
-    # optimizer: Adagrad, Adamax, Adadelta, Momentum, Lamb, SGD
+    # optimizer: Adagrad, Adamax, Adadelta, Momentum, Lamb, SGD, AdamW
 
     finetune(
         train_path=data_args.train_path,
