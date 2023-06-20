@@ -4,7 +4,7 @@ opts = ["Adagrad", "Adamax", "Adadelta", "Momentum", "Lamb", "SGD", "AdamW"]
 # 6/19
 for opt in opts:
     os.system(
-        f"python3 ../../information_extraction/model/finetune.py  \
+        f"python3 ../../information_extraction/model/finetune_adjust_opt.py  \
         --device gpu:0 \
         --logging_steps 10 \
         --save_steps 750 \
