@@ -206,7 +206,7 @@ def finetune(
         else optimizers[0]
     )
     """
-
+    breakpoint()
     trainer.optimizers = (
         optimizer.RMSProp(learning_rate=training_args.learning_rate, parameters=model.parameters())
         if this_optimizers is None
