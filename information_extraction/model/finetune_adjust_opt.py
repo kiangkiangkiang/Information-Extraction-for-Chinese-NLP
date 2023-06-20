@@ -218,7 +218,6 @@ def finetune(
             + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
         )
     )
-    breakpoint()
     # Detecting last checkpoint.
     checkpoint, last_checkpoint = None, None
     if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
