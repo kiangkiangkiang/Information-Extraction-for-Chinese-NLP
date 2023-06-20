@@ -54,6 +54,7 @@ def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
     end_ids = cast(end_ids, "float32")
+    breakpoint()
     loss_start = loss_func(start_prob, start_ids)
     loss_end = loss_func(end_prob, end_ids)
     loss = (loss_start + loss_end) / 2.0
