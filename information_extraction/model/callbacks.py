@@ -24,6 +24,8 @@ sys.path.append(parent)
 
 from paddlenlp.utils.log import logger
 
+loss_func = nn.BCELoss()
+
 
 def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
     # TODO add lambda for each group
@@ -42,7 +44,6 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
 def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
     # TODO add lambda for each group
     breakpoint()
-    loss_func = nn.BCELoss()
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
