@@ -355,5 +355,5 @@ if __name__ == "__main__":
         training_args=training_args,
         criterion=mlflow_handler.loss_func if MLFLOW else uie_loss_func,
         compute_metrics=mlflow_handler.SpanEvaluator_metrics if MLFLOW else SpanEvaluator_metrics,
-        this_optimizers=(model_args.this_optimizers, None),
+        optimizers=(model_args.this_optimizers, None),
     )
