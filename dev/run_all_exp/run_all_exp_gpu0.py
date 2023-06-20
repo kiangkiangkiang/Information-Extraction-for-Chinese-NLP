@@ -1,7 +1,8 @@
 import os
 
-# 6/19
-for seed in range(10, 17):
+# 6/19 6/20
+seed_list = [87, 7019, 78, 7414, 54, 2023]
+for seed in seed_list:
     os.system(
         f"python3 ../../information_extraction/model/finetune.py  \
         --device gpu:0 \
@@ -18,13 +19,13 @@ for seed in range(10, 17):
         --per_device_eval_batch_size 8 \
         --per_device_train_batch_size 8 \
         --multilingual True \
-        --num_train_epochs 5 \
-        --learning_rate 2e-5 \
+        --num_train_epochs 4 \
+        --learning_rate 1.3e-5 \
         --label_names 'start_positions' 'end_positions' \
         --do_train \
         --do_eval \
         --do_export \
-        --output_dir ../../information_extraction/results/ckp_final_data_768_epochs5_seed_{seed}_lr2e-5\
+        --output_dir ../../information_extraction/results/ckp_final_data_768_epochs4_seed_{seed}_lr1.3e-5\
         --overwrite_output_dir \
         --disable_tqdm True \
         --metric_for_best_model eval_f1 \
