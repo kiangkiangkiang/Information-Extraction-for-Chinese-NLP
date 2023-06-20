@@ -45,12 +45,11 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
 def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
     # TODO add lambda for each group
     weight = []
-    for each_group in pd.unique(group):
+    for each_group in group:
         weight.append(loss_weight[each_group])
     weight = paddle.to_tensor(weight, dtype="float32")
     loss_func.weight = weight
 
-    breakpoint()
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
