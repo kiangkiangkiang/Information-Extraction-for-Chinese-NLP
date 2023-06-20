@@ -10,7 +10,7 @@ for opt in opts:
         --save_steps 750 \
         --eval_steps 750 \
         --seed 11 \
-        --model_name_or_path uie-base  \
+        --model_name_or_path uie-base \
         --train_path ../../information_extraction/data/toy_data/training_data.txt \
         --dev_path ../../information_extraction/data/toy_data/eval_data.txt  \
         --test_path ../../information_extraction/data/toy_data/testing_data.txt  \
