@@ -86,10 +86,7 @@ class ModelArguments:
         default=None,
         metadata={"help": "Path to directory to store the exported inference model."},
     )
-    loss_weight: Optional[float] = field(
-        default=[1, 2, 4],
-        metadata={"help": "Path to directory to store the exported inference model."},
-    )
+    loss_weight: Optional[List[float]] = field(default_factory=lambda: [1, 2, 3])
     multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
 
 
@@ -102,6 +99,24 @@ class IETrainingArguments(TrainingArguments):
         if base_config.root_dir and self.output_dir is None:
             self.output_dir = base_config.root_dir + base_config.train_result_path
         return super().__post_init__()
+
+
+def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
+    weight = []
+    for each_group in group:
+        weight.append(loss_weight[each_group])
+    weight = paddle.to_tensor(weight, dtype="float32")
+    loss_func.weight = weight.reshape((outputs[0].shape[0], 1))
+    start_ids, end_ids = labels
+    start_prob, end_prob = outputs
+    start_ids = cast(start_ids, "float32")
+    end_ids = cast(end_ids, "float32")
+    breakpoint()
+    loss_start = loss_func(start_prob, start_ids)
+    loss_end = loss_func(end_prob, end_ids)
+    loss = (loss_start + loss_end) / 2.0
+    logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}")
+    return loss
 
 
 # main function
@@ -311,7 +326,6 @@ if __name__ == "__main__":
         "醫療費用": model_args.loss_weight[1],
         "薪資收入": model_args.loss_weight[2],
     }
-    breakpoint()
 
     if base_config.root_dir:
         if data_args.train_path is None and training_args.do_train:
