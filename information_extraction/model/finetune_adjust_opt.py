@@ -116,7 +116,7 @@ def finetune(
     ] = convert_to_uie_format,
     criterion=uie_loss_func,
     compute_metrics=SpanEvaluator_metrics,
-    this_optimizers=None,
+    optimizers: Optional[Tuple[optimizer.Optimizer, optimizer.lr.LRScheduler]] = (None, None),
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
     set_device(training_args.device)
@@ -198,6 +198,7 @@ def finetune(
         callbacks=[DefaultFlowCallback],
         max_seq_len=max_seq_len,
         read_data_method=read_data_method,
+        optimizers=optimizers,
     )
 
     """
@@ -210,11 +211,9 @@ def finetune(
     breakpoint()
     trainer.optimizers = (
         optimizer.RMSProp(learning_rate=training_args.learning_rate, parameters=model.parameters())
-        if this_optimizers is None
+        if optimizers is None
         else eval(
-            "optimizer."
-            + this_optimizers
-            + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
+            "optimizer." + optimizers + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
         )
     )
 
@@ -356,5 +355,5 @@ if __name__ == "__main__":
         training_args=training_args,
         criterion=mlflow_handler.loss_func if MLFLOW else uie_loss_func,
         compute_metrics=mlflow_handler.SpanEvaluator_metrics if MLFLOW else SpanEvaluator_metrics,
-        this_optimizers=model_args.this_optimizers,
+        this_optimizers=(model_args.this_optimizers, None),
     )
