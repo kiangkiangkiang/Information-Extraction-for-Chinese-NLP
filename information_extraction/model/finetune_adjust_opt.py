@@ -185,6 +185,7 @@ def finetune(
 
     # TODO solve none dev_dataset
     train_dataset, dev_dataset = (data.map(convert_function) for data in (train_dataset, dev_dataset))
+    breakpoint()
 
     trainer = IETrainer(
         model=model,
