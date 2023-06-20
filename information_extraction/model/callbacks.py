@@ -48,6 +48,7 @@ def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_
     for each_group in group:
         weight.append(loss_weight[each_group])
     weight = paddle.to_tensor(weight, dtype="float32")
+    tmp = weight.cpu()
     loss_func.weight = weight.reshape((outputs[0].shape[0], 1))
 
     start_ids, end_ids = labels
@@ -58,7 +59,7 @@ def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_
     loss_start = loss_func(start_prob, start_ids)
     loss_end = loss_func(end_prob, end_ids)
     loss = (loss_start + loss_end) / 2.0
-    logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}, weight: {list(loss_func.weight)}")
+    logger.debug(f"{mlflow_key} step: {mlflow_step}, loss = {np.round(loss, 5)[0]}, weight: {tmp}")
     return loss
 
 
