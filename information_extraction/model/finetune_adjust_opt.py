@@ -86,6 +86,7 @@ class ModelArguments:
         default=None,
         metadata={"help": "Path to directory to store the exported inference model."},
     )
+    optimizers: Optional[str] = field(default=None)
     multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
 
 
@@ -193,7 +194,6 @@ def finetune(
         eval_dataset=dev_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
-        optimizers=optimizers,
         callbacks=[DefaultFlowCallback],
         max_seq_len=max_seq_len,
         read_data_method=read_data_method,
@@ -208,8 +208,10 @@ def finetune(
     """
     trainer.optimizers = (
         optimizer.RMSProp(learning_rate=training_args.learning_rate, parameters=model.parameters())
-        if optimizers[0] is None
-        else optimizers[0]
+        if optimizers is None
+        else eval(
+            "optimizer." + optimizers + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
+        )
     )
 
     # Detecting last checkpoint.
@@ -336,6 +338,8 @@ if __name__ == "__main__":
         mlflow_handler.run_tags["os"] = sys.platform
         logger.debug("Success to set up mlflow.")
 
+    # optimizer: Adagrad, Adamax, Adadelta, Momentum, Lamb, SGD
+
     finetune(
         train_path=data_args.train_path,
         dev_path=data_args.dev_path,
@@ -348,4 +352,5 @@ if __name__ == "__main__":
         training_args=training_args,
         criterion=mlflow_handler.loss_func if MLFLOW else uie_loss_func,
         compute_metrics=mlflow_handler.SpanEvaluator_metrics if MLFLOW else SpanEvaluator_metrics,
+        optimizers=model_args.optimizers,
     )
