@@ -5,7 +5,7 @@ from typing import Optional
 # from paddlenlp.metrics import SpanEvaluator
 
 from test_metric import SpanEvaluator
-
+import paddle
 from paddlenlp.trainer.trainer_utils import EvalPrediction
 from paddle import cast, nn
 from paddlenlp.transformers import AutoTokenizer, ErnieTokenizer, XLNetTokenizer, RoFormerTokenizer, UIEX
@@ -25,6 +25,7 @@ sys.path.append(parent)
 from paddlenlp.utils.log import logger
 
 loss_func = nn.BCELoss()
+loss_weight = {"精神慰撫": 1, "醫療費用": 2, "薪資收入": 3}
 
 
 def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
@@ -43,7 +44,12 @@ def uie_loss_func(outputs, labels, group=None, mlflow_key=None, mlflow_step=None
 
 def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_step=None) -> float:
     # TODO add lambda for each group
-    breakpoint()
+    weight = []
+    for each_group in pd.unique(group):
+        weight.append(loss_weight[each_group])
+    weight = paddle.to_Tensor(weight, dtype="float32")
+    loss_func.weight = weight
+
     start_ids, end_ids = labels
     start_prob, end_prob = outputs
     start_ids = cast(start_ids, "float32")
