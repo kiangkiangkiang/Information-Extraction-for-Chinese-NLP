@@ -1,6 +1,7 @@
 import os
 
 # 6/19
+"""
 learning_rate = 5e-05
 for i in range(6):
     os.system(
@@ -33,3 +34,38 @@ for i in range(6):
         --save_total_limit 1"
     )
     learning_rate = learning_rate / 2
+"""
+
+# 6/20
+opts = ["Adagrad", "Adamax", "Adadelta", "Momentum", "Lamb", "SGD", "AdamW"]
+for opt in opts:
+    os.system(
+        f"python3 ../../information_extraction/model/finetune_adjust_opt.py  \
+        --device gpu:3 \
+        --logging_steps 10 \
+        --save_steps 750 \
+        --eval_steps 750 \
+        --seed 11 \
+        --model_name_or_path uie-base \
+        --train_path ../../information_extraction/data/final_data/training_data.txt \
+        --dev_path ../../information_extraction/data/final_data/eval_data.txt  \
+        --test_path ../../information_extraction/data/final_data/testing_data.txt  \
+        --max_seq_len 768  \
+        --read_data_method chunk \
+        --per_device_eval_batch_size 8 \
+        --per_device_train_batch_size 8 \
+        --multilingual True \
+        --num_train_epochs 4 \
+        --learning_rate 1.25e-5 \
+        --label_names 'start_positions' 'end_positions' \
+        --do_train \
+        --do_eval \
+        --do_export \
+        --optimizers_name {opt} \
+        --output_dir ../../information_extraction/results/ckp_final_data_768_epochs4_seed_11_lr125e-5_opt{opt}\
+        --overwrite_output_dir \
+        --disable_tqdm True \
+        --metric_for_best_model eval_f1 \
+        --load_best_model_at_end  True \
+        --save_total_limit 1"
+    )
