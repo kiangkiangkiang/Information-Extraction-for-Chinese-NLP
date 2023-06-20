@@ -86,7 +86,7 @@ class ModelArguments:
         default=None,
         metadata={"help": "Path to directory to store the exported inference model."},
     )
-    optimizers: Optional[str] = field(default=None)
+    this_optimizers: Optional[str] = field(default=None)
     multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
 
 
@@ -116,7 +116,7 @@ def finetune(
     ] = convert_to_uie_format,
     criterion=uie_loss_func,
     compute_metrics=SpanEvaluator_metrics,
-    optimizers=None,
+    this_optimizers=None,
     training_args: Optional[TrainingArguments] = None,
 ) -> None:
     set_device(training_args.device)
@@ -206,12 +206,14 @@ def finetune(
         else optimizers[0]
     )
     """
-    breakpoint()
+
     trainer.optimizers = (
         optimizer.RMSProp(learning_rate=training_args.learning_rate, parameters=model.parameters())
-        if optimizers is None
+        if this_optimizers is None
         else eval(
-            "optimizer." + optimizers + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
+            "optimizer."
+            + this_optimizers
+            + "(learning_rate=training_args.learning_rate, parameters=model.parameters())"
         )
     )
 
@@ -353,5 +355,5 @@ if __name__ == "__main__":
         training_args=training_args,
         criterion=mlflow_handler.loss_func if MLFLOW else uie_loss_func,
         compute_metrics=mlflow_handler.SpanEvaluator_metrics if MLFLOW else SpanEvaluator_metrics,
-        optimizers=model_args.optimizers,
+        this_optimizers=model_args.this_optimizers,
     )
