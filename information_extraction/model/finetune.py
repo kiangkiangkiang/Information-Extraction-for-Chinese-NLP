@@ -86,10 +86,6 @@ class ModelArguments:
         default=None,
         metadata={"help": "Path to directory to store the exported inference model."},
     )
-    loss_weight: Optional[float] = field(
-        default=[1, 2, 4],
-        metadata={"help": "Path to directory to store the exported inference model."},
-    )
     multilingual: bool = field(default=False, metadata={"help": "Whether the model is a multilingual model."})
 
 
