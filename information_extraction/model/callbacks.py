@@ -48,7 +48,7 @@ def uie_loss_func_by_group(outputs, labels, group=None, mlflow_key=None, mlflow_
     for each_group in group:
         weight.append(loss_weight[each_group])
     weight = paddle.to_tensor(weight, dtype="float32")
-    tmp = weight.cpu()
+    tmp = list(weight.numpy())
     loss_func.weight = weight.reshape((outputs[0].shape[0], 1))
 
     start_ids, end_ids = labels
