@@ -1,0 +1,17 @@
+eval_loss	0.00032437630579806864
+eval_醫療費用_precision	0.6582491582491582
+eval_醫療費用_recall	0.8631346578366446
+eval_醫療費用_f1	0.7468958930276981
+eval_精神慰撫_precision	0.8877338877338877
+eval_精神慰撫_recall	0.9364035087719298
+eval_精神慰撫_f1	0.9114194236926362
+eval_薪資收入_precision	0.5983606557377049
+eval_薪資收入_recall	0.6403508771929824
+eval_薪資收入_f1	0.6186440677966101
+eval_precision	0.714781233906917
+eval_recall	0.8132963479338523
+eval_f1	0.7589864615056481
+eval_runtime	329.0303
+eval_samples_per_second	23.442
+eval_steps_per_second	1.468
+epoch	5.0
