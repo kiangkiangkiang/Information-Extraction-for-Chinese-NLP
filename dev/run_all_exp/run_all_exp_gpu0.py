@@ -1,7 +1,7 @@
 import os
 
 # 6/19 6/20
-seed_list = [7019, 78, 7414, 54, 2023]
+seed_list = [7414, 2023]
 for seed in seed_list:
     os.system(
         f"python3 ../../information_extraction/model/finetune.py  \
@@ -19,7 +19,7 @@ for seed in seed_list:
         --per_device_eval_batch_size 8 \
         --per_device_train_batch_size 8 \
         --multilingual True \
-        --num_train_epochs 4 \
+        --num_train_epochs 3 \
         --learning_rate 1.3e-5 \
         --label_names 'start_positions' 'end_positions' \
         --do_train \

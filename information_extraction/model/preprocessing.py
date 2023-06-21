@@ -484,7 +484,7 @@ def get_base_config():
     return base_config
 
 
-def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
+def create_data_loader(dataset, mode="train", batch_size=16, trans_fn=None, shuffle=False):
     """
     Create dataloader.
     Args:
@@ -497,7 +497,12 @@ def create_data_loader(dataset, batch_size=16, trans_fn=None, shuffle=False):
     """
     if trans_fn:
         dataset = dataset.map(trans_fn)
-    sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+
+    shuffle = True if mode == "train" else False
+    if mode == "train":
+        sampler = DistributedBatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
+    else:
+        sampler = BatchSampler(dataset=dataset, batch_size=batch_size, shuffle=shuffle)
     dataloader = DataLoader(dataset, batch_sampler=sampler, return_list=True)
     return dataloader
 

@@ -1,7 +1,7 @@
 import argparse
 from functools import partial
 import paddle
-from utils.data_utils import read_data_by_chunk, convert_to_uie_format, create_data_loader
+from preprocessing import read_data_by_chunk, convert_to_uie_format, create_data_loader
 from utils.exceptions import DataError
 import os
 from paddlenlp.data import DataCollatorWithPadding
@@ -9,9 +9,10 @@ from paddlenlp.datasets import load_dataset
 from paddlenlp.metrics import SpanEvaluator
 from paddlenlp.transformers import UIE, AutoTokenizer
 from paddlenlp.utils.log import logger
-from config.base_config import entity_type
 import numpy as np
 import pandas as pd
+
+entity_type = ["精神慰撫金額", "醫療費用", "薪資收入"]
 
 
 def get_min_word_in_entity_type(entity_type):
@@ -123,7 +124,6 @@ def evaluate(
     test_ds = test_ds.map(convert_function)
     data_collator = DataCollatorWithPadding(tokenizer)
     test_data_loader = create_data_loader(test_ds, mode="test", batch_size=batch_size, trans_fn=data_collator)
-    logger.info("Start Evaluation Loop...")
     if is_eval_by_class:
         evaluate_loop_by_class(model, test_data_loader, entity_type, tokenizer)
     else:
@@ -144,6 +144,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_seq_len", type=int, default=512, help="The maximum total input sequence length after tokenization.")
 
     args = parser.parse_args()
+    # yapf: enable
 
     evaluate(
         model_path=args.model_path,

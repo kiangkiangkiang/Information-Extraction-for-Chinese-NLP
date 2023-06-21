@@ -35,7 +35,7 @@ for i in range(6):
     )
     learning_rate = learning_rate / 2
 """
-loss_weights = ["1 2 4", "1 1.5 2", "1 3 6", "1 2 3"]
+loss_weights = ["1 1.5 2", "1 3 6", "1 2 3"]
 for lw in loss_weights:
     os.system(
         f"python3 ../../information_extraction/model/finetune_loss_by_group.py  \
@@ -53,7 +53,7 @@ for lw in loss_weights:
         --per_device_eval_batch_size 8 \
         --per_device_train_batch_size 8 \
         --multilingual True \
-        --num_train_epochs 4 \
+        --num_train_epochs 3 \
         --learning_rate 1.25e-05 \
         --label_names 'start_positions' 'end_positions' \
         --do_train \
