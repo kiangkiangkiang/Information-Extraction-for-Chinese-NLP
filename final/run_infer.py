@@ -8,32 +8,48 @@ import json
 
 
 class ResultProcesser:
-    def __init__(self, select_strategy: str = None, threshold: float = None) -> None:
-        self.process = eval("self." + select_strategy + "_process")
-        self.threshold = threshold
+    def __init__(
+        self,
+        select_strategy: str = "all",
+        threshold: float = 0.5,
+        select_key: List[str] = ["text", "start", "end", "probability"],
+    ) -> None:
 
-    def max_process(self, results):
+        """
+        each_entity_results (example): [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46060848236083984}, {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.8074951171875}]
+        """
+        self.select_strategy_fun = eval("self._" + select_strategy + "_process")
+        self.threshold = threshold if threshold else 0.5
+        self.select_key = select_key if select_key else ["text", "start", "end", "probability"]
+
+    def _key_filter(strategy_fun):
+        def select_key(self, each_entity_results):
+            each_entity_results = strategy_fun(self, each_entity_results)
+
+            breakpoint()
+
+        return select_key
+
+    def process(self, results):
         new_result = []
         for result in results:
             tmp = [{}]
             for entity in result[0]:
-                tmp[0][entity] = sorted(result[0][entity], key=lambda x: x["probability"], reverse=True)[0]
+                tmp[0][entity] = self.select_strategy_fun(result[0][entity])
             new_result.append(tmp)
         return new_result
 
-    def threshold_process(self, results):
-        if not self.threshold:
-            logger.error(f"Missing threshold. Auto use all process strategy.")
-        new_result = []
-        for result in results:
-            tmp = [{}]
-            for entity in result[0]:
-                tmp[0][entity] = list(filter(lambda x: x["probability"] > self.threshold, result[0][entity]))
-            new_result.append(tmp)
-        return new_result
+    @_key_filter
+    def _max_process(self, each_entity_results):
+        return [sorted(each_entity_results, key=lambda x: x["probability"], reverse=True)[0]]
 
-    def all_process(self, results):
-        return results
+    @_key_filter
+    def _threshold_process(self, each_entity_results):
+        return list(filter(lambda x: x["probability"] > self.threshold, each_entity_results))
+
+    @_key_filter
+    def _all_process(self, each_entity_results):
+        return each_entity_results
 
 
 def inference(
@@ -142,9 +158,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    breakpoint()
 
-    result_processer = ResultProcesser(select_strategy=args.select_strategy, threshold=args.select_strategy_threshold)
+    result_processer = ResultProcesser(
+        select_strategy=args.select_strategy, threshold=args.select_strategy_threshold, select_key=args.select_key
+    )
     postprocess_fun = result_processer.process
 
     inference_result = inference(
@@ -157,7 +174,7 @@ if __name__ == "__main__":
         task_path=args.task_path,
         postprocess_fun=postprocess_fun,
     )
-
+    breakpoint()
     if args.save_dir:
         out_result = []
         if not os.path.exists(args.save_dir):

@@ -63,7 +63,8 @@ python run_infer.py \
     --batch_size 16 \
     --task_path ./results/checkpoint/model_best \
     --select_key text probability \
-    --select_strategy max 
+    --select_strategy threshold \
+    --select_strategy_threshold 0.2 
 ```
 
 ## Prediction (可能不需要)
