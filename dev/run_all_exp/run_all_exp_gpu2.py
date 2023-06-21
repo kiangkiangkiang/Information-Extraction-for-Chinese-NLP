@@ -106,9 +106,9 @@ python3 ../../information_extraction/model/finetune.py  \
 
 """
 python ../../information_extraction/model/run_eval.py \
-    --model_path ../../information_extraction/results/ckp_final_data_768_epochs4_seed_7019_lr1.3e-5/checkpoint-8000 \
-    --test_path ../../information_extraction/data/final_data_remove_repeat/testing_data.txt \
-    --device gpu:2 \
+    --model_path ../../information_extraction/results/ckp_final_data_768_epochs4_lr1.25e-05_loss1-2-4/ \
+    --test_path ../../information_extraction/data/final_data/testing_data.txt \
+    --device gpu:0 \
     --is_eval_by_class True \
     --max_seq_len 768 \
     --batch_size 8     
