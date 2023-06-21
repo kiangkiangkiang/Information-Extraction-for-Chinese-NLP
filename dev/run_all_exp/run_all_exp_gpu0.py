@@ -1,7 +1,7 @@
 import os
 
 # 6/19 6/20
-seed_list = [87, 7019, 78, 7414, 54, 2023]
+seed_list = [7019, 78, 7414, 54, 2023]
 for seed in seed_list:
     os.system(
         f"python3 ../../information_extraction/model/finetune.py  \
