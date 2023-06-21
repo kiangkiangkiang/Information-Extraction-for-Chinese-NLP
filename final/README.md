@@ -66,7 +66,7 @@ python run_infer.py \
     --select_strategy max 
 ```
 
-## Prediction
+## Prediction (可能不需要)
 
 ``` python
 python main_app.py ...
