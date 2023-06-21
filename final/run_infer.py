@@ -28,6 +28,7 @@ class ResultProcesser:
             results = []
             for each_entity_result in each_entity_results:
                 results.append({key: each_entity_result[key] for key in self.select_key})
+                # TODO select key
 
             breakpoint()
 
