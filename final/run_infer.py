@@ -25,6 +25,9 @@ class ResultProcesser:
     def _key_filter(strategy_fun):
         def select_key(self, each_entity_results):
             each_entity_results = strategy_fun(self, each_entity_results)
+            results = []
+            for each_entity_result in each_entity_results:
+                results.append({key: each_entity_result[key] for key in self.select_key})
 
             breakpoint()
 
