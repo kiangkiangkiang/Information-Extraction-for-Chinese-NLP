@@ -35,7 +35,7 @@ for i in range(6):
     )
     learning_rate = learning_rate / 2
 """
-loss_weights = ["1 3 6", "1 2 3"]
+loss_weights = ["1 3 6"]
 for lw in loss_weights:
     os.system(
         f"python3 ../../information_extraction/model/finetune_loss_by_group.py  \

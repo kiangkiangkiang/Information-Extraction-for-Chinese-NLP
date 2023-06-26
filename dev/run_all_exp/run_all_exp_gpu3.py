@@ -37,7 +37,7 @@ for i in range(6):
 """
 
 # 6/20
-opts = ["RMSProp", "SGD", "Adadelta", "Momentum", "Lamb", "AdamW"]
+opts = ["SGD"]
 for opt in opts:
     os.system(
         f"python3 ../../information_extraction/model/finetune_adjust_opt.py  \

@@ -37,7 +37,7 @@ for i in range(6):
 """
 
 # 6/20
-learning_rate = [1.25e-05, 1e-05]
+learning_rate = [1e-05]
 max_seq_len = [(768, 8)]
 for lr in learning_rate:
     for msl in max_seq_len:

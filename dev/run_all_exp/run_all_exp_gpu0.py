@@ -1,14 +1,14 @@
 import os
 
 # 6/19 6/20
-seed_list = [7414, 2023]
+seed_list = [2023]
 for seed in seed_list:
     os.system(
         f"python3 ../../information_extraction/model/finetune.py  \
         --device gpu:0 \
         --logging_steps 10 \
-        --save_steps 500 \
-        --eval_steps 500 \
+        --save_steps 750 \
+        --eval_steps 750 \
         --seed {seed} \
         --model_name_or_path uie-base  \
         --train_path ../../information_extraction/data/final_data/training_data.txt \
