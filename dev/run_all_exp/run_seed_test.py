@@ -1,10 +1,10 @@
 import os
 
-my_seed = 123
+my_seed = 7019
 
 os.system(
     f"python3 ../../information_extraction/model/finetune.py  \
-    --device gpu:3 \
+    --device gpu:2 \
     --logging_steps 10 \
     --save_steps 750 \
     --eval_steps 750 \

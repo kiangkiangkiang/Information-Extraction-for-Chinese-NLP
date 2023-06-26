@@ -106,8 +106,8 @@ python3 ../../information_extraction/model/finetune.py  \
 
 """
 python ../../information_extraction/model/run_eval.py \
-    --model_path ../../information_extraction/results/ckp_final_data_remove_repeat_768_epochs4_seed_11_lr1.25e-05/checkpoint-3000 \
-    --test_path ../../information_extraction/data/final_data_remove_repeat/testing_data.txt \
+    --model_path ../../information_extraction/results/ckp_final_data_seed123 \
+    --test_path ../../information_extraction/data/final_data/testing_data.txt \
     --device gpu:0 \
     --is_eval_by_class True \
     --max_seq_len 768 \
