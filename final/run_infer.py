@@ -69,10 +69,10 @@ def inference(
     if not os.path.exists(data_path) and not text_list:
         raise ValueError(f"Data not found in {data_path}. Please input the correct path of data.")
 
-    if not os.path.exists(task_path):
-        logger.warning(f"Task path not found in {task_path}. Use uie-base to inference...")
-
     if task_path:
+        if not os.path.exists(task_path):
+            raise ValueError(f"{task_path} is not a directory.")
+
         uie = Taskflow(
             "information_extraction",
             schema=schema,
