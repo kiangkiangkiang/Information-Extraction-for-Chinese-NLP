@@ -37,7 +37,7 @@ for i in range(6):
 """
 
 # 6/20
-opts = ["Adagrad", "Adamax", "Adadelta", "Momentum", "Lamb", "SGD", "AdamW"]
+opts = ["SGD"]
 for opt in opts:
     os.system(
         f"python3 ../../information_extraction/model/finetune_adjust_opt.py  \
@@ -55,7 +55,7 @@ for opt in opts:
         --per_device_eval_batch_size 8 \
         --per_device_train_batch_size 8 \
         --multilingual True \
-        --num_train_epochs 4 \
+        --num_train_epochs 3 \
         --learning_rate 1.25e-5 \
         --label_names 'start_positions' 'end_positions' \
         --do_train \

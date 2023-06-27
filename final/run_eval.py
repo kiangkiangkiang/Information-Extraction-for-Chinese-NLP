@@ -123,6 +123,7 @@ def evaluate(
     test_ds = test_ds.map(convert_function)
     data_collator = DataCollatorWithPadding(tokenizer)
     test_data_loader = create_data_loader(test_ds, mode="test", batch_size=batch_size, trans_fn=data_collator)
+    logger.info("Start Evaluation Loop...")
     if is_eval_by_class:
         evaluate_loop_by_class(model, test_data_loader, entity_type, tokenizer)
     else:
@@ -138,12 +139,11 @@ if __name__ == "__main__":
     parser.add_argument("--model_path", type=str, default=None, help="The path of saved model that you want to load.")
     parser.add_argument("--test_path", type=str, default="./data/model_input_data/test.txt", help="The path of test set.")
     parser.add_argument("--batch_size", type=int, default=16, help="Batch size per GPU/CPU/NPU for training.")
-    parser.add_argument("--device", type=str, default="gpu", choices=["gpu", "cpu", "npu"], help="Device selected for evaluate.")
+    parser.add_argument("--device", type=str, default="gpu", help="Device selected for evaluate.")
     parser.add_argument("--is_eval_by_class", choices=["True", "False"], default="False", help="Precision, recall and F1 score are calculated for each class separately if this option is enabled.")
     parser.add_argument("--max_seq_len", type=int, default=512, help="The maximum total input sequence length after tokenization.")
 
     args = parser.parse_args()
-    # yapf: enable
 
     evaluate(
         model_path=args.model_path,
