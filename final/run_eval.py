@@ -12,6 +12,7 @@ from paddlenlp.utils.log import logger
 from config.base_config import entity_type
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 
 def get_min_word_in_entity_type(entity_type):
@@ -40,7 +41,7 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
     min_word = get_min_word_in_entity_type(entity_type)
     name_mapping = {entity[:min_word]: entity for entity in entity_type}
     model.eval()
-    for batch in data_loader:
+    for batch in tqdm(data_loader):
         start_ids = np.array(batch.pop("start_positions"))
         end_ids = np.array(batch.pop("end_positions"))
         start_prob, end_prob = model(**batch)
@@ -81,7 +82,7 @@ def evaluate_loop(model, data_loader):
     metric = SpanEvaluator()
     model.eval()
     metric.reset()
-    for batch in data_loader:
+    for batch in tqdm(data_loader):
         start_ids = paddle.cast(batch.pop("start_positions"), "float32")
         end_ids = paddle.cast(batch.pop("end_positions"), "float32")
         start_prob, end_prob = model(**batch)

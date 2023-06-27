@@ -199,7 +199,7 @@ def finetune(
         read_data_method=read_data_method,
     )
     trainer.optimizers = (
-        optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters())
+        optimizer.AdamW(learning_rate=training_args.learning_rate, parameters=model.parameters(), weight_decay=0.003)
         if optimizers[0] is None
         else optimizers[0]
     )

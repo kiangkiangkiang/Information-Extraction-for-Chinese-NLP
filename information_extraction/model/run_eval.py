@@ -11,6 +11,7 @@ from paddlenlp.transformers import UIE, AutoTokenizer
 from paddlenlp.utils.log import logger
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 entity_type = ["精神慰撫金額", "醫療費用", "薪資收入"]
 
@@ -41,7 +42,7 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
     min_word = get_min_word_in_entity_type(entity_type)
     name_mapping = {entity[:min_word]: entity for entity in entity_type}
     model.eval()
-    for batch in data_loader:
+    for batch in tqdm(data_loader):
         start_ids = np.array(batch.pop("start_positions"))
         end_ids = np.array(batch.pop("end_positions"))
         start_prob, end_prob = model(**batch)
