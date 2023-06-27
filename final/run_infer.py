@@ -5,6 +5,7 @@ from paddlenlp import Taskflow
 from paddlenlp.utils.log import logger
 import os
 import json
+from tqdm import tqdm
 
 
 class ResultProcesser:
@@ -25,12 +26,9 @@ class ResultProcesser:
     def _key_filter(strategy_fun):
         def select_key(self, each_entity_results):
             each_entity_results = strategy_fun(self, each_entity_results)
-            results = []
-            for each_entity_result in each_entity_results:
-                results.append({key: each_entity_result[key] for key in self.select_key})
-                # TODO select key
-
-            breakpoint()
+            for i, each_entity_result in enumerate(each_entity_results):
+                each_entity_results[i] = {key: each_entity_result[key] for key in self.select_key}
+            return each_entity_results
 
         return select_key
 
@@ -92,7 +90,11 @@ def inference(
         with open(data_path, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
 
-    return postprocess_fun([uie(text) for text in text_list]) if postprocess_fun else [uie(text) for text in text_list]
+    return (
+        postprocess_fun([uie(text) for text in tqdm(text_list)])
+        if postprocess_fun
+        else [uie(text) for text in text_list]
+    )
 
 
 if __name__ == "__main__":
@@ -168,6 +170,7 @@ if __name__ == "__main__":
     )
     postprocess_fun = result_processer.process
 
+    logger.info("Start Inference...")
     inference_result = inference(
         data_path=args.data_path,
         schema=entity_type,
@@ -178,6 +181,7 @@ if __name__ == "__main__":
         task_path=args.task_path,
         postprocess_fun=postprocess_fun,
     )
+    logger.info("End Inference...")
     breakpoint()
     if args.save_dir:
         out_result = []
