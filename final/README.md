@@ -67,6 +67,18 @@ python run_infer.py \
     --select_strategy_threshold 0.2 
 ```
 
+``` python
+#test
+python run_infer.py \
+    --data_path ./data/model_infer_data/example.txt \
+    --precision fp32 \
+    --batch_size 16 \
+    --model uie-base \
+    --select_key text probability \
+    --select_strategy threshold \
+    --select_strategy_threshold 0.2 
+```
+
 ## Prediction (可能不需要)
 
 ``` python

@@ -181,8 +181,13 @@ if __name__ == "__main__":
         task_path=args.task_path,
         postprocess_fun=postprocess_fun,
     )
+
+    logger.info("========== Inference Results ==========")
+    for i, text_inference_result in enumerate(inference_result):
+        logger.info(f"========== Content {i} Results ==========")
+        logger.info(text_inference_result)
     logger.info("End Inference...")
-    breakpoint()
+
     if args.save_dir:
         out_result = []
         if not os.path.exists(args.save_dir):
