@@ -2,6 +2,7 @@ import argparse
 from config.base_config import entity_type
 from typing import List, Callable
 from paddlenlp import Taskflow
+from paddle import set_device
 from paddlenlp.utils.log import logger
 import os
 import json
@@ -118,6 +119,12 @@ if __name__ == "__main__":
         help="The path where you wanna to save results of inference. If None, model won't write data.",
     )
     parser.add_argument(
+        "--device",
+        default="cpu",
+        type=str,
+        help="TODO edit",
+    )
+    parser.add_argument(
         "--precision",
         choices=["fp16", "fp32"],
         default="fp32",
@@ -164,6 +171,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    if args.precision == "fp16" and args.device == "cpu":
+        logger.warning("Cannot apply fp16 on cpu. Auto-adjust to fp32.")
+        args.precision = "fp32"
+
+    set_device(args.device)
 
     result_processer = ResultProcesser(
         select_strategy=args.select_strategy, threshold=args.select_strategy_threshold, select_key=args.select_key
