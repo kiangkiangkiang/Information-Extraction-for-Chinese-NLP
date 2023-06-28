@@ -71,7 +71,6 @@ python run_infer.py \
 #test
 python run_infer.py \
     --data_path ./data/model_infer_data/example.txt \
-    --device cpu \
     --precision fp32 \
     --batch_size 16 \
     --model uie-base \
@@ -85,7 +84,7 @@ python run_infer.py \
 python run_infer.py \
     --data_path ../information_extraction/data/final_data/testing_data.txt \
     --task_path ../information_extraction/results/ckp_final_data_768_epochs4_seed_87_lr1.3e-5/checkpoint-9500 \
-    --device cpu \
+    --device_id -1 \
     --precision fp32 \
     --batch_size 16 \
     --select_key text probability \

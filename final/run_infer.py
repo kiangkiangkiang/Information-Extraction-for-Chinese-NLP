@@ -58,6 +58,7 @@ class ResultProcesser:
 def inference(
     data_path: str,
     schema: List[str],
+    device_id: int = 0,
     text_list: List[str] = None,
     precision: str = "fp32",
     batch_size: int = 1,
@@ -78,6 +79,7 @@ def inference(
             task_path=task_path,
             precision=precision,
             batch_size=batch_size,
+            device_id=device_id,
         )
     else:
         uie = Taskflow(
@@ -86,7 +88,9 @@ def inference(
             model=model,
             precision=precision,
             batch_size=batch_size,
+            device_id=device_id,
         )
+
     if not text_list:
         with open(data_path, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
@@ -119,9 +123,9 @@ if __name__ == "__main__":
         help="The path where you wanna to save results of inference. If None, model won't write data.",
     )
     parser.add_argument(
-        "--device",
-        default="cpu",
-        type=str,
+        "--device_id",
+        default=0,
+        type=int,
         help="TODO edit",
     )
     parser.add_argument(
@@ -172,11 +176,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.precision == "fp16" and args.device == "cpu":
+    if args.precision == "fp16" and args.device_id == -1:
         logger.warning("Cannot apply fp16 on cpu. Auto-adjust to fp32.")
         args.precision = "fp32"
-
-    set_device(args.device)
 
     result_processer = ResultProcesser(
         select_strategy=args.select_strategy, threshold=args.select_strategy_threshold, select_key=args.select_key
@@ -186,6 +188,7 @@ if __name__ == "__main__":
     logger.info("Start Inference...")
     inference_result = inference(
         data_path=args.data_path,
+        device_id=args.device_id,
         schema=entity_type,
         text_list=args.text_list,
         precision=args.precision,
