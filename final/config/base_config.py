@@ -12,7 +12,9 @@ UIE_input_spec = [
     InputSpec(shape=[None, None], dtype="int64", name="attention_mask"),
 ]
 
-logger.set_level("INFO")
+logger.set_level("DEBUG")
+
+regularized_token = ["\n", " ", "\u3000"]
 
 
 @dataclass
@@ -149,6 +151,11 @@ class InferenceDataArguments:
     save_dir: str = field(
         default=None,
         metadata={"help": "The path where you wanna to save results of inference. If None, model won't write data."},
+    )
+
+    is_regularize_data: bool = field(
+        default=False,
+        metadata={"help": "Whether to regularize data (remove special tokens likes \\n). Defaults to False"},
     )
 
 

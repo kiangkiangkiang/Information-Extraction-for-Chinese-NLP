@@ -1,6 +1,7 @@
 from config.base_config import (
     logger,
     entity_type,
+    regularized_token,
     InferenceDataArguments,
     InferenceStrategyArguments,
     InferenceTaskflowArguments,
@@ -13,20 +14,22 @@ import json
 from tqdm import tqdm
 
 
-class ResultProcesser:
+class Processer:
     def __init__(
         self,
         select_strategy: str = "all",
         threshold: float = 0.5,
         select_key: List[str] = ["text", "start", "end", "probability"],
+        is_regularize_data: bool = False,
     ) -> None:
 
         """
         each_entity_results (example): [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46060848236083984}, {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.8074951171875}]
         """
-        self.select_strategy_fun = eval("self._" + select_strategy + "_process")
+        self.select_strategy_fun = eval("self._" + select_strategy + "_postprocess")
         self.threshold = threshold if threshold else 0.5
         self.select_key = select_key if select_key else ["text", "start", "end", "probability"]
+        self.preprocess = self._regularize_preprocess if is_regularize_data else lambda x: x
 
     def _key_filter(strategy_fun):
         def select_key(self, each_entity_results):
@@ -37,7 +40,7 @@ class ResultProcesser:
 
         return select_key
 
-    def process(self, results):
+    def postprocess(self, results):
         new_result = []
         for result in results:
             tmp = [{}]
@@ -46,16 +49,20 @@ class ResultProcesser:
             new_result.append(tmp)
         return new_result
 
+    def _regularize_preprocess(self, text):
+        # TODO regularized_token
+        pass
+
     @_key_filter
-    def _max_process(self, each_entity_results):
+    def _max_postprocess(self, each_entity_results):
         return [sorted(each_entity_results, key=lambda x: x["probability"], reverse=True)[0]]
 
     @_key_filter
-    def _threshold_process(self, each_entity_results):
+    def _threshold_postprocess(self, each_entity_results):
         return list(filter(lambda x: x["probability"] > self.threshold, each_entity_results))
 
     @_key_filter
-    def _all_process(self, each_entity_results):
+    def _all_postprocess(self, each_entity_results):
         return each_entity_results
 
 
@@ -68,7 +75,8 @@ def inference(
     batch_size: int = 1,
     model: str = "uie-base",
     task_path: str = None,
-    postprocess_fun: Callable = None,
+    postprocess_fun: Callable = lambda x: x,
+    preprocess_fun: Callable = lambda x: x,
 ):
     if not os.path.exists(data_file) and not text_list:
         raise ValueError(f"Data not found in {data_file}. Please input the correct path of data.")
@@ -99,11 +107,7 @@ def inference(
         with open(data_file, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
 
-    return (
-        postprocess_fun([uie(text) for text in tqdm(text_list)])
-        if postprocess_fun
-        else [uie(text) for text in text_list]
-    )
+    return postprocess_fun([uie(preprocess_fun(text)) for text in tqdm(text_list)])
 
 
 if __name__ == "__main__":
@@ -114,14 +118,15 @@ if __name__ == "__main__":
         logger.warning("Cannot apply fp16 on cpu. Auto-adjust to fp32.")
         taskflow_args.precision = "fp32"
 
-    result_processer = ResultProcesser(
+    uie_processer = Processer(
         select_strategy=strategy_args.select_strategy,
         threshold=strategy_args.select_strategy_threshold,
         select_key=strategy_args.select_key,
+        is_regularize_data=data_args.is_regularize_data,
     )
-    postprocess_fun = result_processer.process
 
     logger.info("Start Inference...")
+
     inference_result = inference(
         data_file=data_args.data_file,
         device_id=taskflow_args.device_id,
@@ -131,7 +136,8 @@ if __name__ == "__main__":
         batch_size=taskflow_args.batch_size,
         model=taskflow_args.model,
         task_path=taskflow_args.task_path,
-        postprocess_fun=postprocess_fun,
+        postprocess_fun=uie_processer.postprocess,
+        preprocess_fun=uie_processer.preprocess,
     )
 
     logger.info("========== Inference Results ==========")

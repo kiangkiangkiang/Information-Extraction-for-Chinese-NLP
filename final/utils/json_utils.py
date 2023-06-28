@@ -29,11 +29,11 @@ def shuffle_data(data: list) -> list:
 
 
 def convert_format(dataset: List[dict], entity_type: List[str], is_shuffle: bool = True) -> List[dict]:
-    # TODO docstring 增加變數entity_type
     """轉換格式邏輯程式，將 label studio output 轉換成 UIE 模型所吃的格式。
 
     Args:
         dataset (List[dict]): label studio output的json檔。
+        entity_type (List[str]): label studio 標注時所定義的所有 entity，例如「薪資收入」。
         is_shuffle (bool, optional): 是否隨機打亂資料. Defaults to True.
 
     Raises:
@@ -64,7 +64,6 @@ def convert_format(dataset: List[dict], entity_type: List[str], is_shuffle: bool
                     "end": label_result["value"]["end"],
                 }
             )
-        # add_negative_samples(uie_format)# if result == []
         results.extend(uie_format.values())
     return shuffle_data(results) if is_shuffle else results
 
@@ -171,7 +170,7 @@ def regularize_json_file(
     """Regularize the JSON file list.
 
     Args:
-        json_file (str): A JSON file which contains several JSONs which want to be regularized.
+        json_file (str): A JSON file path which contains several JSONs which want to be regularized.
         output_path (str, optional): The path of regularized JSON. Defaults to "./".
         regularize_text (Optional[List[str]], optional): List of the special tokens. Each string in the list must be only one character (len(TOKEN) == 1).  Defaults to ["\n", " ", "\u3000"].
         special_result_case (Optional[List[str]], optional): Other special case which cannot be regularize in regularize_text. Defaults to [r"\n"].

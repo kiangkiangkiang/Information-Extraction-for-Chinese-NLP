@@ -1,4 +1,4 @@
-from config.base_config import logger, entity_type, ConvertArguments
+from config.base_config import logger, entity_type, ConvertArguments, regularized_token
 from utils.json_utils import convert_format, shuffle_data, set_seed, regularize_json_file
 from paddlenlp.trainer import PdArgumentParser
 from typing import List, Tuple
@@ -113,7 +113,9 @@ if __name__ == "__main__":
     regularized_result = None
 
     if args.is_regularize_data:
-        regularized_result = regularize_json_file(json_file=args.labelstudio_file, out_variable=True)
+        regularized_result = regularize_json_file(
+            json_file=args.labelstudio_file, out_variable=True, regularize_text=regularized_token
+        )
 
     split_labelstudio(
         labelstudio_file=args.labelstudio_file,
