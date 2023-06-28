@@ -1,20 +1,8 @@
 import json
 from typing import Optional, List, Any, Dict, Union, Tuple, Iterator
-import numpy as np
 from paddlenlp.utils.log import logger
 from paddle.io import BatchSampler, DataLoader, DistributedBatchSampler
 from .exceptions import DataError, PreprocessingError
-
-
-def random_choose(prob: float = 0.5) -> bool:
-    """根據機率隨機產生 True/False
-    Args:
-        prob (float, optional): 產生 True 的機率值. Defaults to 0.5.
-
-    Returns: bool.
-    """
-    criterion = np.random.uniform(0, 1, 1)[0]
-    return True if criterion < prob else False
 
 
 def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[str, str]]:
@@ -193,6 +181,7 @@ def convert_to_uie_format(
         )[0]
     except Exception as e:
         logger.error(f"Tokenizer Error: {e}")
+        logger.debug(f"Tokenizer Bug, content: {data['prompt']}")
         encoded_inputs = tokenizer(
             text=[data["prompt"]],
             text_pair=["無文本"],

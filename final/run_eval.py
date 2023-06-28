@@ -1,4 +1,4 @@
-import argparse
+from config.base_config import logger, entity_type, EvaluationArguments
 from functools import partial
 import paddle
 from utils.data_utils import read_data_by_chunk, convert_to_uie_format, create_data_loader
@@ -8,8 +8,7 @@ from paddlenlp.data import DataCollatorWithPadding
 from paddlenlp.datasets import load_dataset
 from paddlenlp.metrics import SpanEvaluator
 from paddlenlp.transformers import UIE, AutoTokenizer
-from paddlenlp.utils.log import logger
-from config.base_config import entity_type
+from paddlenlp.trainer import PdArgumentParser
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -94,23 +93,24 @@ def evaluate_loop(model, data_loader):
 
 
 def evaluate(
-    test_path: str,
+    dev_file: str,
     device: str = "gpu",
-    model_path: str = "uie-base",
+    model_name_or_path: str = "uie-base",
     max_seq_len: int = 512,
     batch_size: int = 16,
     is_eval_by_class: bool = False,
 ):
-    if not os.path.exists(test_path):
-        raise ValueError(f"Data not found in {test_path}. Please input the correct path of data.")
+    if not os.path.exists(dev_file):
+        raise ValueError(f"Data not found in {dev_file}. Please input the correct path of data.")
+
     paddle.set_device(device)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = UIE.from_pretrained(model_path)
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
+    model = UIE.from_pretrained(model_name_or_path)
 
     test_ds = load_dataset(
         read_data_by_chunk,
-        data_path=test_path,
+        data_path=dev_file,
         max_seq_len=max_seq_len,
         lazy=False,
     )
@@ -134,21 +134,12 @@ def evaluate(
 
 
 if __name__ == "__main__":
-    # yapf: disable
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--model_path", type=str, default=None, help="The path of saved model that you want to load.")
-    parser.add_argument("--test_path", type=str, default="./data/model_input_data/test.txt", help="The path of test set.")
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size per GPU/CPU/NPU for training.")
-    parser.add_argument("--device", type=str, default="gpu", help="Device selected for evaluate.")
-    parser.add_argument("--is_eval_by_class", choices=["True", "False"], default="False", help="Precision, recall and F1 score are calculated for each class separately if this option is enabled.")
-    parser.add_argument("--max_seq_len", type=int, default=512, help="The maximum total input sequence length after tokenization.")
-
-    args = parser.parse_args()
+    parser = PdArgumentParser(EvaluationArguments)
+    args = parser.parse_args_into_dataclasses()[0]
 
     evaluate(
-        model_path=args.model_path,
-        test_path=args.test_path,
+        model_name_or_path=args.model_name_or_path,
+        dev_file=args.dev_file,
         batch_size=args.batch_size,
         device=args.device,
         is_eval_by_class=args.is_eval_by_class,

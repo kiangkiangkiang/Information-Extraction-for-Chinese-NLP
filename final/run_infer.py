@@ -1,9 +1,13 @@
-import argparse
-from config.base_config import entity_type
+from config.base_config import (
+    logger,
+    entity_type,
+    InferenceDataArguments,
+    InferenceStrategyArguments,
+    InferenceTaskflowArguments,
+)
 from typing import List, Callable
 from paddlenlp import Taskflow
-from paddle import set_device
-from paddlenlp.utils.log import logger
+from paddlenlp.trainer import PdArgumentParser
 import os
 import json
 from tqdm import tqdm
@@ -56,7 +60,7 @@ class ResultProcesser:
 
 
 def inference(
-    data_path: str,
+    data_file: str,
     schema: List[str],
     device_id: int = 0,
     text_list: List[str] = None,
@@ -66,8 +70,8 @@ def inference(
     task_path: str = None,
     postprocess_fun: Callable = None,
 ):
-    if not os.path.exists(data_path) and not text_list:
-        raise ValueError(f"Data not found in {data_path}. Please input the correct path of data.")
+    if not os.path.exists(data_file) and not text_list:
+        raise ValueError(f"Data not found in {data_file}. Please input the correct path of data.")
 
     if task_path:
         if not os.path.exists(task_path):
@@ -92,7 +96,7 @@ def inference(
         )
 
     if not text_list:
-        with open(data_path, "r", encoding="utf8") as f:
+        with open(data_file, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
 
     return (
@@ -103,98 +107,30 @@ def inference(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--data_path",
-        default="./data/model_infer_data/example.txt",
-        type=str,
-        help="The path of data that you wanna inference.",
-    )
-    parser.add_argument(
-        "--text_list",
-        default=None,
-        type=List[str],
-        help="The path of data that you wanna inference.",
-    )
-    parser.add_argument(
-        "--save_dir",
-        default=None,
-        type=str,
-        help="The path where you wanna to save results of inference. If None, model won't write data.",
-    )
-    parser.add_argument(
-        "--device_id",
-        default=0,
-        type=int,
-        help="TODO edit",
-    )
-    parser.add_argument(
-        "--precision",
-        choices=["fp16", "fp32"],
-        default="fp32",
-        type=str,
-        help="Default 'fp32', which is slower than 'fp16'. If 'fp16' is applied, make sure your CUDA>=11.2 and cuDNN>=8.1.1.",
-    )
-    parser.add_argument(
-        "--batch_size",
-        default=1,
-        type=int,
-        help="Batch size of model input.",
-    )
-    parser.add_argument(
-        "--model",
-        default="uie-base",
-        type=str,
-        help="The model you want to use.",
-    )
-    parser.add_argument(
-        "--task_path",
-        default=None,
-        type=str,
-        help="The checkpoint you want to use in inference.",
-    )
-    parser.add_argument(
-        "--select_strategy",
-        choices=["max", "all", "threshold"],
-        default="all",
-        type=str,
-        help="Strategy of getting results. max: only get the max prob. result. all: get all results. threshold",
-    )
-    parser.add_argument(
-        "--select_strategy_threshold",
-        default=0.5,
-        type=float,
-        help="The checkpoint you want to use in inference.",
-    )
-    # TODO select_key還沒實作好
-    parser.add_argument(
-        "--select_key",
-        default=["text", "start", "end", "probability"],
-        nargs="+",
-        help="UIE will output ['text', 'start', 'end', 'probability']. --select_key is to select which key in the list you want to remain.",
-    )
+    parser = PdArgumentParser((InferenceDataArguments, InferenceStrategyArguments, InferenceTaskflowArguments))
+    data_args, strategy_args, taskflow_args = parser.parse_args_into_dataclasses()
 
-    args = parser.parse_args()
-
-    if args.precision == "fp16" and args.device_id == -1:
+    if taskflow_args.precision == "fp16" and taskflow_args.device_id == -1:
         logger.warning("Cannot apply fp16 on cpu. Auto-adjust to fp32.")
-        args.precision = "fp32"
+        taskflow_args.precision = "fp32"
 
     result_processer = ResultProcesser(
-        select_strategy=args.select_strategy, threshold=args.select_strategy_threshold, select_key=args.select_key
+        select_strategy=strategy_args.select_strategy,
+        threshold=strategy_args.select_strategy_threshold,
+        select_key=strategy_args.select_key,
     )
     postprocess_fun = result_processer.process
 
     logger.info("Start Inference...")
     inference_result = inference(
-        data_path=args.data_path,
-        device_id=args.device_id,
+        data_file=data_args.data_file,
+        device_id=taskflow_args.device_id,
         schema=entity_type,
-        text_list=args.text_list,
-        precision=args.precision,
-        batch_size=args.batch_size,
-        model=args.model,
-        task_path=args.task_path,
+        text_list=data_args.text_list,
+        precision=taskflow_args.precision,
+        batch_size=taskflow_args.batch_size,
+        model=taskflow_args.model,
+        task_path=taskflow_args.task_path,
         postprocess_fun=postprocess_fun,
     )
 
@@ -204,16 +140,16 @@ if __name__ == "__main__":
         logger.info(text_inference_result)
     logger.info("End Inference...")
 
-    if args.save_dir:
+    if data_args.save_dir:
         out_result = []
-        if not os.path.exists(args.save_dir):
-            logger.warning(f"{args.save_dir} is not found. Auto-create the dir.")
-            os.makedirs(args.save_dir)
+        if not os.path.exists(data_args.save_dir):
+            logger.warning(f"{data_args.save_dir} is not found. Auto-create the dir.")
+            os.makedirs(data_args.save_dir)
 
-        with open(args.data_path, "r", encoding="utf8") as f:
+        with open(data_args.data_file, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
 
-        with open(os.path.join(args.save_dir, "inference_results.txt"), "w", encoding="utf8") as f:
+        with open(os.path.join(data_args.save_dir, "inference_results.txt"), "w", encoding="utf8") as f:
             for content, result in zip(text_list, inference_result):
                 out_result.append(
                     {

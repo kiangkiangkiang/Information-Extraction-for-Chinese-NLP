@@ -1,11 +1,10 @@
+from config.base_config import logger, entity_type, ConvertArguments
 from utils.json_utils import convert_format, shuffle_data, set_seed, regularize_json_file
-from config.base_config import entity_type
-from paddlenlp.utils.log import logger
+from paddlenlp.trainer import PdArgumentParser
 from typing import List, Tuple
 import json
 import os
 from decimal import Decimal
-import argparse
 
 
 def do_split(
@@ -70,7 +69,7 @@ def split_labelstudio(
         ValueError: split_ratio 加總不等於 1。
     """
 
-    logger.info(f"Converting {os.path.basename(labelstudio_file)} into {save_dir}...")
+    logger.info(f"Start converting {os.path.basename(labelstudio_file)} into {save_dir}...")
     set_seed(seed)
 
     if not os.path.exists(save_dir):
@@ -104,45 +103,16 @@ def split_labelstudio(
             for item in data:
                 outline = json.dumps(item, ensure_ascii=False)
                 outfile.write(outline + "\n")
+    logger.info("Finish the convert.")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--labelstudio_file",
-        default="./data/label_studio_data/label_studio_output.json",
-        type=str,
-        help="The export file path of label studio, only support the JSON format.",
-    )
-    parser.add_argument(
-        "--save_dir", default="./data/model_input_data/", type=str, help="The path of data that you wanna save."
-    )
-    parser.add_argument("--seed", type=int, default=1000, help="Random seed for initialization")
-    parser.add_argument(
-        "--split_ratio",
-        default=[0.8, 0.1, 0.1],
-        type=float,
-        nargs="*",
-        help="The ratio of samples in datasets. [0.7, 0.2, 0.1] means 70% samples used for training, 20% for evaluation and 10% for test.",
-    )
-    parser.add_argument(
-        "--is_shuffle",
-        choices=["True", "False"],
-        default="True",
-        type=str,
-        help="Whether to shuffle the labeled dataset, defaults to True.",
-    )
-    parser.add_argument(
-        "--is_regularize_data",
-        choices=["True", "False"],
-        default="True",
-        type=str,
-        help="The path of data that you wanna save.",
-    )
-    args = parser.parse_args()
+    parser = PdArgumentParser(ConvertArguments)
+    args = parser.parse_args_into_dataclasses()[0]
 
     regularized_result = None
-    if eval(args.is_regularize_data):
+
+    if args.is_regularize_data:
         regularized_result = regularize_json_file(json_file=args.labelstudio_file, out_variable=True)
 
     split_labelstudio(
@@ -151,5 +121,5 @@ if __name__ == "__main__":
         save_dir=args.save_dir,
         seed=args.seed,
         split_ratio=args.split_ratio,
-        is_shuffle=eval(args.is_shuffle),
+        is_shuffle=args.is_shuffle,
     )

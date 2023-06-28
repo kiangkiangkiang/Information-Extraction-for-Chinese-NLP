@@ -15,8 +15,8 @@ python run_convert.py
 python run_train.py \
     --device gpu \
     --logging_steps 10 \
-    --save_steps 10 \
-    --eval_steps 10 \
+    --save_steps 100 \
+    --eval_steps 100 \
     --seed 42 \
     --model_name_or_path uie-base  \
     --dataset_path ./data/model_input_data/ \
@@ -26,7 +26,7 @@ python run_train.py \
     --max_seq_len 512  \
     --per_device_eval_batch_size 16 \
     --per_device_train_batch_size  16 \
-    --num_train_epochs 0.01 \
+    --num_train_epochs 0.03 \
     --learning_rate 1e-5 \
     --label_names 'start_positions' 'end_positions' \
     --do_train \
@@ -45,8 +45,8 @@ python run_train.py \
 
 ``` python
 python run_eval.py \
-    --model_path ./results/checkpoint/model_best \
-    --test_path ./data/model_input_data/test.txt \
+    --model_name_or_path ./results/checkpoint/model_best \
+    --dev_file ./data/model_input_data/test.txt \
     --device gpu \
     --is_eval_by_class True \
     --max_seq_len 512 \
@@ -57,7 +57,7 @@ python run_eval.py \
 
 ``` python
 python run_infer.py \
-    --data_path ./data/model_infer_data/example.txt \
+    --data_file ./data/model_infer_data/example.txt \
     --save_dir ./results/inference_results/ \
     --precision fp16 \
     --batch_size 16 \
@@ -67,36 +67,6 @@ python run_infer.py \
     --select_strategy_threshold 0.2 
 ```
 
-``` python
-#test
-python run_infer.py \
-    --data_path ./data/model_infer_data/example.txt \
-    --precision fp32 \
-    --batch_size 16 \
-    --model uie-base \
-    --select_key text probability \
-    --select_strategy threshold \
-    --select_strategy_threshold 0.2 
-```
-
-``` python
-#test inference
-python run_infer.py \
-    --data_path ../information_extraction/data/final_data/testing_data.txt \
-    --task_path ../information_extraction/results/ckp_final_data_768_epochs4_seed_87_lr1.3e-5/checkpoint-9500 \
-    --device_id -1 \
-    --precision fp32 \
-    --batch_size 16 \
-    --select_key text probability \
-    --select_strategy threshold \
-    --select_strategy_threshold 0.2 
-```
-## Prediction (可能不需要)
-
-``` python
-python main_app.py ...
-```
-
 
 # 已完成
 
@@ -104,10 +74,11 @@ python main_app.py ...
 2. run_train.py
 3. run_eval.py
 4. run_infer.py
+5. logger.set_level -> ok
+6. 整理 config
 
 # 未完成
 
-1. 整理 config
 2. 整理所有 function docstring 和程式碼命名等等
 3. test case
 4. 看能不能實驗的時候 也能看所有指標

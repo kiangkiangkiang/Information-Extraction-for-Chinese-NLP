@@ -1,77 +1,17 @@
+from config.base_config import logger, UIE_input_spec, TrainModelArguments, TrainDataArguments
 from utils.data_utils import read_data_by_chunk, convert_to_uie_format
 from utils.model_utils import uie_loss_func, compute_metrics
-from config.base_config import UIE_input_spec
 from paddlenlp.transformers import UIE, AutoTokenizer
 from paddlenlp.trainer import Trainer, get_last_checkpoint, TrainingArguments, PdArgumentParser
 from paddlenlp.trainer.trainer_callback import DefaultFlowCallback, EarlyStoppingCallback
 from paddlenlp.transformers import export_model
 from paddle import set_device, optimizer
-from paddlenlp.utils.log import logger
-from typing import Optional, List, Any, Callable, Dict, Union, Tuple, Literal
+from typing import Optional, Any, Callable, Dict, Union, Tuple
 from functools import partial
 from paddlenlp.datasets import load_dataset
 import os
-from dataclasses import dataclass, field, asdict
 
 
-@dataclass
-class DataArguments:
-    """
-    Arguments pertaining to what data we are going to input our model for training and eval.
-    Using `PdArgumentParser` we can turn this class into argparse arguments to be able to
-    specify them on the command line.
-    """
-
-    dataset_path: str = field(
-        default="./data/model_input_data/",
-        metadata={"help": "Local dataset directory including train.txt, dev.txt and test.txt (optional)."},
-    )
-
-    train_file: str = field(
-        default="train.txt",
-        metadata={"help": "The name of the dataset to use (via the datasets library)."},
-    )
-
-    dev_file: str = field(
-        default="dev.txt",
-        metadata={"help": "The name of the dataset to use (via the datasets library)."},
-    )
-
-    test_file: str = field(
-        default="test.txt",
-        metadata={"help": "The name of the dataset to use (via the datasets library)."},
-    )
-
-    max_seq_len: Optional[int] = field(
-        default=512,
-        metadata={
-            "help": "The maximum total input sequence length after tokenization. Sequences longer "
-            "than this will be truncated, sequences shorter will be padded."
-        },
-    )
-
-
-@dataclass
-class ModelArguments:
-    """
-    Arguments pertaining to which model/config/tokenizer we are going to fine-tune from.
-    """
-
-    model_name_or_path: Optional[str] = field(
-        default="uie-base",
-        metadata={
-            "help": "Path to pretrained model, such as 'uie-base', 'uie-tiny', "
-            "'uie-medium', 'uie-mini', 'uie-micro', 'uie-nano', 'uie-base-en', "
-            "'uie-m-base', 'uie-m-large', or finetuned model path."
-        },
-    )
-    export_model_dir: Optional[str] = field(
-        default=None,
-        metadata={"help": "Path to directory to store the exported inference model."},
-    )
-
-
-# main function
 def finetune(
     dataset_path: str,
     train_file: str,
@@ -110,6 +50,12 @@ def finetune(
                     Auto-training without testing data..."
             )
         training_args.do_predict = False
+
+    if training_args.load_best_model_at_end and training_args.do_eval:
+        raise ValueError(
+            "Cannot load best model at end when do_eval is False. Auto-adjust. Please adjust load_best_model_at_end or do_eval."
+        )
+
     logger.info(
         f"Process rank: {training_args.local_rank}, device: {training_args.device}, world_size: {training_args.world_size}, "
         + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
@@ -191,8 +137,8 @@ def finetune(
 
     # Start Testing
     if training_args.do_predict:
-        test_metrics = trainer.evaluate(eval_dataset=test_dataset)
-        trainer.log_metrics("test", test_metrics)
+        predict_output = trainer.predict(test_dataset=test_dataset)
+        trainer.log_metrics("test", predict_output.metrics)
 
     # export inference model
     if training_args.do_export:
@@ -200,10 +146,11 @@ def finetune(
             export_model_dir = os.path.join(training_args.output_dir, "export")
         export_model(model=trainer.model, input_spec=UIE_input_spec, path=export_model_dir)
         trainer.tokenizer.save_pretrained(export_model_dir)
+    logger.info("Finish training.")
 
 
 if __name__ == "__main__":
-    parser = PdArgumentParser((ModelArguments, DataArguments, TrainingArguments))
+    parser = PdArgumentParser((TrainModelArguments, TrainDataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     training_args.print_config(model_args, "Model")
@@ -214,8 +161,8 @@ if __name__ == "__main__":
         train_file=data_args.train_file,
         dev_file=data_args.dev_file,
         test_file=data_args.test_file,
-        max_seq_len=data_args.max_seq_len,
+        max_seq_len=model_args.max_seq_len,
         model_name_or_path=model_args.model_name_or_path,
-        export_model_dir=model_args.export_model_dir,
+        export_model_dir=data_args.export_model_dir,
         training_args=training_args,
     )
