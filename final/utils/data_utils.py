@@ -54,7 +54,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[
                     if result_list[0]["start"] < max_content_len:
                         if result_list[0]["end"] > max_content_len:
                             # Result-Cross case: using dynamic adjust max_content_len to escape the problem.
-                            logger.debug(f"Result-Cross. result: {result_list[0]}, content:{content}")
+                            logger.debug(f"Result-Cross. result: {result_list[0]}.")
                             max_content_len = result_list[0]["start"]
                             result_list[0]["start"] -= max_content_len
                             result_list[0]["end"] -= max_content_len

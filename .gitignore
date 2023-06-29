@@ -4,3 +4,7 @@ dev/mlruns
 mlruns
 dev/install.sh
 final/results
+final/log
+log
+*.pyc
+*__pycache__

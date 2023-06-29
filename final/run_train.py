@@ -51,7 +51,7 @@ def finetune(
             )
         training_args.do_predict = False
 
-    if training_args.load_best_model_at_end and training_args.do_eval:
+    if training_args.load_best_model_at_end and not training_args.do_eval:
         raise ValueError(
             "Cannot load best model at end when do_eval is False. Auto-adjust. Please adjust load_best_model_at_end or do_eval."
         )

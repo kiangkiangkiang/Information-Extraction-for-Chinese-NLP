@@ -122,6 +122,7 @@ def evaluate(
     )
 
     test_ds = test_ds.map(convert_function)
+
     data_collator = DataCollatorWithPadding(tokenizer)
     test_data_loader = create_data_loader(test_ds, mode="test", batch_size=batch_size, trans_fn=data_collator)
     logger.info("Start Evaluation Loop...")

@@ -11,22 +11,23 @@ python run_convert.py
 
 ## Train
 
+### 單卡訓練
 ``` python
 python run_train.py \
     --device gpu \
     --logging_steps 10 \
-    --save_steps 100 \
-    --eval_steps 100 \
-    --seed 42 \
+    --save_steps 200 \
+    --eval_steps 200 \
+    --seed 11 \
     --model_name_or_path uie-base  \
     --dataset_path ./data/model_input_data/ \
     --train_file train.txt \
     --dev_file dev.txt  \
     --test_file test.txt  \
-    --max_seq_len 512  \
-    --per_device_eval_batch_size 16 \
-    --per_device_train_batch_size  16 \
-    --num_train_epochs 0.03 \
+    --max_seq_len 768  \
+    --per_device_eval_batch_size 8 \
+    --per_device_train_batch_size  8 \
+    --num_train_epochs 5 \
     --learning_rate 1e-5 \
     --label_names 'start_positions' 'end_positions' \
     --do_train \
@@ -41,6 +42,39 @@ python run_train.py \
     --save_total_limit 1
 ```
 
+### 多卡訓練
+
+``` python
+python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
+    --device gpu \
+    --logging_steps 10 \
+    --save_steps 200 \
+    --eval_steps 200 \
+    --seed 11 \
+    --model_name_or_path uie-base  \
+    --dataset_path ./data/model_input_data/ \
+    --train_file train.txt \
+    --dev_file dev.txt  \
+    --test_file test.txt  \
+    --max_seq_len 768  \
+    --per_device_eval_batch_size 8 \
+    --per_device_train_batch_size  8 \
+    --num_train_epochs 15 \
+    --learning_rate 1e-6 \
+    --label_names 'start_positions' 'end_positions' \
+    --do_train \
+    --do_eval \
+    --do_predict \
+    --do_export \
+    --weight_decay 0.0005 \
+    --output_dir ./results/checkpoint/model_best \
+    --overwrite_output_dir \
+    --disable_tqdm True \
+    --metric_for_best_model eval_f1 \
+    --load_best_model_at_end True \
+    --save_total_limit 1 \
+    --resume_from_checkpoint ./results/checkpoint/model_best
+```
 ## Evaluation
 
 ``` python
@@ -53,18 +87,42 @@ python run_eval.py \
     --batch_size 16 
 ```
 
+``` python
+# test
+python run_eval.py \
+    --model_name_or_path ./results/checkpoint/model_best/checkpoint-6000 \
+    --dev_file ./data/model_input_data/test.txt \
+    --device gpu:3 \
+    --is_eval_by_class True \
+    --max_seq_len 512 \
+    --batch_size 16
+```
+
 ## Inference
 
 ``` python
 python run_infer.py \
     --data_file ./data/model_infer_data/example.txt \
     --save_dir ./results/inference_results/ \
-    --precision fp16 \
+    --precision fp32 \
     --batch_size 16 \
     --task_path ./results/checkpoint/model_best \
-    --select_key text probability \
+    --select_key all \
     --select_strategy threshold \
-    --select_strategy_threshold 0.2 
+    --select_strategy_threshold 0.5
+```
+
+``` python
+# test
+python run_infer.py \
+    --data_file ./data/model_input_data/example.txt \
+    --save_dir ./results/inference_results/ \
+    --precision fp32 \
+    --batch_size 16 \
+    --task_path ./results/checkpoint/model_best \
+    --select_key all w\
+    --select_strategy threshold \
+    --select_strategy_threshold 0.5
 ```
 
 
