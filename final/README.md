@@ -9,6 +9,7 @@ python run_convert.py
 - 預設 train/dev/test 比例為 0.8/0.1/0.1
 - 預設會做正規化（若在 label 時就已經把特殊字元例如\n, 空白等等特殊字元去除，則設定 `--is_regularize_data False`）
 
+### 參數設定
 ## Train
 
 ### 單卡訓練
@@ -48,8 +49,8 @@ python run_train.py \
 python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
     --device gpu \
     --logging_steps 10 \
-    --save_steps 200 \
-    --eval_steps 200 \
+    --save_steps 100 \
+    --eval_steps 100 \
     --seed 11 \
     --model_name_or_path uie-base  \
     --dataset_path ./data/model_input_data/ \
@@ -59,8 +60,8 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
     --max_seq_len 768  \
     --per_device_eval_batch_size 8 \
     --per_device_train_batch_size  8 \
-    --num_train_epochs 15 \
-    --learning_rate 1e-6 \
+    --num_train_epochs 18 \
+    --learning_rate 7e-7 \
     --label_names 'start_positions' 'end_positions' \
     --do_train \
     --do_eval \
@@ -75,6 +76,8 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
     --save_total_limit 1 \
     --resume_from_checkpoint ./results/checkpoint/model_best
 ```
+
+### 參數設定
 ## Evaluation
 
 ``` python
@@ -83,8 +86,8 @@ python run_eval.py \
     --dev_file ./data/model_input_data/test.txt \
     --device gpu \
     --is_eval_by_class True \
-    --max_seq_len 512 \
-    --batch_size 16 
+    --max_seq_len 768 \
+    --batch_size 8
 ```
 
 ``` python
@@ -98,6 +101,7 @@ python run_eval.py \
     --batch_size 16
 ```
 
+### 參數設定
 ## Inference
 
 ``` python
@@ -125,7 +129,7 @@ python run_infer.py \
     --select_strategy_threshold 0.5
 ```
 
-
+### 參數設定
 # 已完成
 
 1. utils 們
