@@ -1,6 +1,8 @@
 # Usage
 
-## Convert
+## Convert Function
+
+將 label studio 針對 UIE 任務所標記完的資料匯出後，透過 run_convert.py 轉換成模型所吃的 .txt 檔案，並依照比例切割成訓練資料集、驗證資料集、測試資料集後匯出。
 
 ``` python
 python run_convert.py 
@@ -10,8 +12,9 @@ python run_convert.py
 - 預設會做正規化（若在 label 時就已經把特殊字元例如\n, 空白等等特殊字元去除，則設定 `--is_regularize_data False`）
 
 ### 參數設定
-## Train
+## Training Function
 
+微調模型的主要運行程式。
 ### 單卡訓練
 ``` python
 python run_train.py \
@@ -78,7 +81,9 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
 ```
 
 ### 參數設定
-## Evaluation
+## Evaluation Function
+
+驗證的主要運行程式。
 
 ``` python
 python run_eval.py \
@@ -102,7 +107,9 @@ python run_eval.py \
 ```
 
 ### 參數設定
-## Inference
+## Inference Function
+
+預測的主要運行程式。
 
 ``` python
 python run_infer.py \
