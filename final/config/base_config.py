@@ -124,7 +124,7 @@ class EvaluationArguments(TrainModelArguments):
     )
 
     device: str = field(
-        default="cpu",
+        default="gpu",
         metadata={"help": "The device for evaluate."},
     )
 

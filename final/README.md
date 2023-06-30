@@ -89,12 +89,12 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
 - `--per_device_train_batch_size`: 預設`16`，模型在每個裝置訓練所使用的批次資料數量。
 - `--per_device_eval_batch_size`: 預設`16`，模型在每個裝置驗證所使用的批次資料數量。
 - `--dataset_path`: 預設`./data/model_input_data/`，主要存放資料集的位置。
-- `--train_file`: 預設`train.txt`，
-- `--dev_file`
-- `--test_file`
-- `--eval_steps`
-- `--output_dir`
-- `--metric_for_best_model`
+- `--train_file`: 預設`train.txt`，訓練資料集檔名。
+- `--dev_file`: 預設`dev.txt`，驗證資料集檔名。
+- `--test_file`: 預設`test.txt`，測試資料集檔名。
+- `--eval_steps`: 預設與`--logging_steps`相同，指模型在每幾個訓練步驟時要做驗證。
+- `--output_dir`: 必須，模型訓練產生的 checkpoint 檔案位置。
+- `--metric_for_best_model`: 預設`loss`，訓練過程中，選擇最好模型的依據。
 
 
 
@@ -124,6 +124,14 @@ python run_eval.py \
 ```
 
 ### 重要參數
+
+- `--device`: 預設`gpu`，選擇用何種裝置訓練模型，可使用`cpu`或是指定 gpu ，例如：`gpu:0`。
+- `--model_name_or_path`: 預設`uie-base`，訓練時所使用的模型或是模型 checkpoint 路徑。
+- `--max_seq_len`: 預設`512`，模型在每個 batch 所吃的最大文本長度。
+- `--dev_file`: 預設`./data/model_input_data/test.txt`，驗證資料集的檔案路徑。
+- `--batch_size`: 預設`16`，模型所使用的批次資料數量。
+- `--is_eval_by_class`: 預設`False`，是否根據不同類別算出各自指標。
+
 ## Inference Function
 
 預測的主要運行程式。
@@ -154,6 +162,30 @@ python run_infer.py \
 ```
 
 ### 重要參數
+
+- `--data_file`: 預設`dev.txt`，驗證資料集檔名。
+- `--text_list`: 預設`dev.txt`，驗證資料集檔名。
+- `--save_dir`: 必須，模型訓練產生的 checkpoint 檔案位置。
+- `--is_regularize_data`: 預設`True`，是否在轉換前清除特殊字元，ex. "\n"。
+- `--device_id`: 預設`gpu`，選擇用何種裝置訓練模型，可使用`cpu`或是指定 gpu ，例如：`gpu:0`。
+- `--precision`: 預設`train.txt`，訓練資料集檔名。
+- `--batch_size`: 預設`16`，模型所使用的批次資料數量。
+- model
+- taskpath
+
+- `--model_name_or_path`: 預設`uie-base`，訓練時所使用的模型或是模型 checkpoint 路徑。
+- `--max_seq_len`: 預設`512`，模型在每個 batch 所吃的最大文本長度。
+- `--per_device_train_batch_size`: 預設`16`，模型在每個裝置訓練所使用的批次資料數量。
+- `--per_device_eval_batch_size`: 預設`16`，模型在每個裝置驗證所使用的批次資料數量。
+- `--dataset_path`: 預設`./data/model_input_data/`，主要存放資料集的位置。
+
+
+- `--test_file`: 預設`test.txt`，測試資料集檔名。
+- `--eval_steps`: 預設與`--logging_steps`相同，指模型在每幾個訓練步驟時要做驗證。
+- `--output_dir`: 必須，模型訓練產生的 checkpoint 檔案位置。
+- `--metric_for_best_model`: 預設`loss`，訓練過程中，選擇最好模型的依據。
+
+
 # 已完成
 
 1. utils 們
@@ -170,6 +202,8 @@ python run_infer.py \
 3. test case
 4. 看能不能實驗的時候 也能看所有指標
 5. mlflow
+
+
 
 
 
