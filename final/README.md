@@ -1,4 +1,4 @@
-# Usage
+# Function Usage
 
 ## Convert Function
 
@@ -7,11 +7,12 @@
 ``` python
 python run_convert.py 
 ```
-- 預設讀取 data/label_studio_data/label_studio_output.json
-- 預設 train/dev/test 比例為 0.8/0.1/0.1
-- 預設會做正規化（若在 label 時就已經把特殊字元例如\n, 空白等等特殊字元去除，則設定 `--is_regularize_data False`）
+### 重要參數
 
-### 參數設定
+- `--labelstudio_file`: 預設`"./data/label_studio_data/label_studio_output.json"`，label studio 標記完後匯出的 JSON 檔案。
+- `--save_dir`: 預設`"./data/model_input_data/"`，轉換後的 txt 檔案。
+- `--split_ratio`: 預設`[0.8, 0.1, 0.1]`，訓練資料集、驗證資料集、測試資料集各個佔比。
+- `--is_regularize_data`: 預設`True`，是否在轉換前清除特殊字元，ex. "\n"。
 ## Training Function
 
 微調模型的主要運行程式。
@@ -80,7 +81,23 @@ python -u -m paddle.distributed.launch --gpus "0,1,2,3" run_train.py \
     --resume_from_checkpoint ./results/checkpoint/model_best
 ```
 
-### 參數設定
+### 重要參數
+
+- `--device`: 預設`gpu`，選擇用何種裝置訓練模型，可使用`cpu`或是指定 gpu ，例如：`gpu:0`。
+- `--model_name_or_path`: 預設`uie-base`，訓練時所使用的模型或是模型 checkpoint 路徑。
+- `--max_seq_len`: 預設`512`，模型在每個 batch 所吃的最大文本長度。
+- `--per_device_train_batch_size`: 預設`16`，模型在每個裝置訓練所使用的批次資料數量。
+- `--per_device_eval_batch_size`: 預設`16`，模型在每個裝置驗證所使用的批次資料數量。
+- `--dataset_path`: 預設`./data/model_input_data/`，主要存放資料集的位置。
+- `--train_file`: 預設`train.txt`，
+- `--dev_file`
+- `--test_file`
+- `--eval_steps`
+- `--output_dir`
+- `--metric_for_best_model`
+
+
+
 ## Evaluation Function
 
 驗證的主要運行程式。
@@ -106,7 +123,7 @@ python run_eval.py \
     --batch_size 16
 ```
 
-### 參數設定
+### 重要參數
 ## Inference Function
 
 預測的主要運行程式。
@@ -136,7 +153,7 @@ python run_infer.py \
     --select_strategy_threshold 0.5
 ```
 
-### 參數設定
+### 重要參數
 # 已完成
 
 1. utils 們
