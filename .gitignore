@@ -1,10 +1,4 @@
-information_extraction/results
-information_extraction/model/mlruns
-dev/mlruns
-mlruns
-dev/install.sh
-final/results
-final/log
-log
+*.log
+results
 *.pyc
 *__pycache__
