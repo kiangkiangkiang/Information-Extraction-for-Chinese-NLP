@@ -1,12 +1,22 @@
+# Introduction
 
+資訊抽取（Information Extraction）主要針對特定場景萃取重要資訊。在給定文本之下，資訊抽取任務能有效針對此文字進一步對文本做出相應資訊之萃取，本文實作 [PaddleNLP](https://github.com/PaddlePaddle/PaddleNLP/tree/develop) 官方所提供之 [UIE](https://github.com/PaddlePaddle/PaddleNLP/tree/develop/model_zoo/uie) 模型，針對[臺灣司法院判決書資料](https://opendata.judicial.gov.tw/dataset?categoryTheme4Sys%5B0%5D=051&sort.publishedDate.order=desc&page=1)進行分析（詳細資料取得過程可參考[這裡](https://github.com/kiangkiangkiang/NLLP/tree/main/data)）。
+
+由於在司法判決書資料文本過長，資訊繁瑣，格式不一，因此針對內文需花大量人力進行分析，因此在 NLP 任務當中亦有許多處理司法相關之技術 (NLLP, Natural Legal Language Processing)。而**本文主要是針對判決書進行資訊萃取**，在給定使用者所感興趣之資訊（prompt）之下，對判決書進行抽取，將相關資訊呈現。
 
 ---
-
 # Environment
 
 - python >= 3.7
 - paddlenlp >= 2.5.2
 - paddlepaddle-gpu >= 2.5.0 (if GPU used) 
+--- 
+
+# Experiment & Results
+
+對於資訊抽取任務，本篇使用多種模型進行實驗比較，包括 UIE, BERT, Electra, xlnet 等等，並且在處理判決書等長文本問題當中，由於任務特性無法使用 [Two-Stage Method](https://github.com/kiangkiangkiang/Two-Stage-Method-For-Chinese-NLP) 解決，因此透過其他常見文本處理方式，包含 chunk, recurrent 等等進行實驗比較。
+
+
 
 ---
 # Quick Start
@@ -20,8 +30,8 @@ python run_convert.py
 ```
 ### 重要參數
 
-- `--labelstudio_file`: 預設`"./data/label_studio_data/label_studio_output.json"`，label studio 標記完後匯出的 JSON 檔案。
-- `--save_dir`: 預設`"./data/model_input_data/"`，轉換後的 txt 檔案。
+- `--labelstudio_file`: 預設`./data/label_studio_data/label_studio_output.json`，label studio 標記完後匯出的 JSON 檔案。
+- `--save_dir`: 預設`./data/model_input_data/`，轉換後的 txt 檔案。
 - `--split_ratio`: 預設`[0.8, 0.1, 0.1]`，訓練資料集、驗證資料集、測試資料集各個佔比。
 - `--is_regularize_data`: 預設`True`，是否在轉換前清除特殊字元，ex. "\n"。
 ## Training Function
