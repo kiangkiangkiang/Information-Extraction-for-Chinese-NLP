@@ -4,21 +4,26 @@
 
 由於在司法判決書資料文本過長，資訊繁瑣，格式不一，因此針對內文需花大量人力進行分析，因此在 NLP 任務當中亦有許多處理司法相關之技術 (NLLP, Natural Legal Language Processing)。而**本文主要是針對判決書進行資訊萃取**，在給定使用者所感興趣之資訊（prompt）之下，對判決書進行抽取，將相關資訊呈現。
 
----
 # Environment
 
 - python >= 3.7
 - paddlenlp >= 2.5.2
 - paddlepaddle-gpu >= 2.5.0 (if GPU used) 
---- 
-
 # Experiment & Results
 
-對於資訊抽取任務，本篇使用多種模型進行實驗比較，包括 UIE, BERT, Electra, xlnet 等等，並且在處理判決書等長文本問題當中，由於任務特性無法使用 [Two-Stage Method](https://github.com/kiangkiangkiang/Two-Stage-Method-For-Chinese-NLP) 解決，因此透過其他常見文本處理方式，包含 chunk, recurrent 等等進行實驗比較。
+對於資訊抽取任務，本篇使用多種模型進行實驗比較，包括 UIE, BERT, xlnet 等等，並且在處理判決書等長文本問題當中，由於任務特性無法使用 [Two-Stage Method](https://github.com/kiangkiangkiang/Two-Stage-Method-For-Chinese-NLP) 解決，因此透過其他常見文本處理方式（chunking）。
 
+模型實驗結果如下表：
 
+| **Model**         |  **Precision** | **Recall** |  **F1** |
+|:-----------------:|:--------------:|:----------:|:-------:|
+|      UIE (zero shot)     |  0.22  |  0.38  |   0.28     |
+|  UIE (chunking)    | **0.91** |  **0.87**  |  **0.89**   |
+|  Mac-BERT      | 0.57 |  0.80   |  0.66     |
+| electra, xlnet, roformer |  0  |  0  |  0   |
 
----
+由於 UIE 已預訓練在此 Prompt Tuning 等中文資訊抽取任務上，因此表現明顯較好。其他模型包含 xlnet, roformer 對於中文資料仍有相關問題（可參考 [issue](https://github.com/PaddlePaddle/PaddleNLP/issues?q=is%3Aissue+is%3Aopen+out+of+range+)）而無法有效訓練。
+
 # Quick Start
 
 ## Convert Function
