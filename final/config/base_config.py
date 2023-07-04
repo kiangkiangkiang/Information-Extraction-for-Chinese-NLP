@@ -14,7 +14,7 @@ UIE_input_spec = [
 
 logger.set_level("DEBUG")
 
-regularized_token = ["\n", " ", "\u3000"]
+regularized_token = [r"\n", r" ", r"\u3000", r"\\n"]
 
 
 @dataclass
@@ -172,7 +172,7 @@ class InferenceTaskflowArguments:
     precision: str = field(
         default="fp32",
         metadata={
-            "help": "fp16 (Only GPU) or fp32. Default 'fp32', which is slower than 'fp16'. If 'fp16' is applied, make sure your CUDA>=11.2 and cuDNN>=8.1.1."
+            "help": "fp16 or fp32. Default 'fp32', which is slower than 'fp16'. If 'fp16' is applied and gpu is used, make sure your CUDA>=11.2 and cuDNN>=8.1.1."
             "If there is warning when using fp16, pip install onnxruntime-gpu onnx onnxconverter-common."
         },
     )

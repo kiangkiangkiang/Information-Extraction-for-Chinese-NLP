@@ -12,17 +12,40 @@ from paddlenlp.trainer import PdArgumentParser
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+from typing import List, Any
 
 
-def get_min_word_in_entity_type(entity_type):
+def get_min_word_in_entity_type(entity_type: List[str]) -> int:
+    """取出最短的 entity type 字數，用來區分不同的 entity type。
+
+    Args:
+        entity_type (List[str]): 所有 entity type 列表。
+
+    Raises:
+        ValueError: 最短的 entity type 字數無法區分不同的 entity type ，重新設定 entity type 或更改區分方法。
+
+    Returns:
+        int: 可區分不同 entity type 的字數。
+    """
     min_word = np.min([len(i) for i in entity_type])
-    ner_type = [i[:min_word] for i in entity_type]
-    if len(pd.unique(ner_type)) != len(entity_type):
-        raise ValueError(f"The first word in ner_type is repeat. Please adjust it.")
+    distinct_entity_type = [i[:min_word] for i in entity_type]
+    if len(pd.unique(distinct_entity_type)) != len(entity_type):
+        raise ValueError(f"Unable to distinguish different entity types. Please adjust entity type or the method.")
     return min_word
 
 
-def get_eval_group(min_word, inputs, tokenizer):
+def get_eval_group(min_word: int, inputs: paddle.Tensor, tokenizer: Any) -> np.ndarray:
+    """將 input batch 內的 tensor 依照 min_word 進行分類。
+    UIE input 格式為 [CLS] PROMPT [SEP] CONTENT [SEP] ，因此可以依照 PROMPT 位置進行分類。分類的標準為可區分 entity type 的最小字數。
+
+    Args:
+        min_word (int): 可區分不同 entity type 的字數。
+        inputs (paddle.Tensor): 模型的 input_ids (Only UIE fromat)。
+        tokenizer (Any): UIE Tokenizer. 將 input_ids 轉為文字。
+
+    Returns:
+        np.ndarray: input batch 中，每筆觀測值的類別。
+    """
     group = tokenizer.convert_ids_to_tokens(np.array(inputs[:, 1 : (min_word + 1)]).flatten())
     group = [
         "".join(group)[start:end]
@@ -41,9 +64,8 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
     name_mapping = {entity[:min_word]: entity for entity in entity_type}
     model.eval()
     for batch in tqdm(data_loader):
-        #
-        start_ids = np.array(batch.pop("start_positions"))
-        end_ids = np.array(batch.pop("end_positions"))
+        start_ids = paddle.cast(batch.pop("start_positions"), "float32")
+        end_ids = paddle.cast(batch.pop("end_positions"), "float32")
         start_prob, end_prob = model(**batch)
         eval_group = get_eval_group(min_word, batch["input_ids"], tokenizer)
         unique_group = pd.unique(eval_group)
@@ -54,10 +76,10 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
                 )
             selected_group = eval_group == each_group
             num_correct, num_infer, num_label = metric[name_mapping[each_group]].compute(
-                np.array(start_prob)[selected_group, :],
-                np.array(end_prob)[selected_group, :],
-                start_ids[selected_group, :],
-                end_ids[selected_group, :],
+                start_prob.numpy()[selected_group, :],
+                end_prob.numpy()[selected_group, :],
+                start_ids.numpy()[selected_group, :],
+                end_ids.numpy()[selected_group, :],
             )
             metric[name_mapping[each_group]].update(num_correct, num_infer, num_label)
         num_correct, num_infer, num_label = metric["total"].compute(start_prob, end_prob, start_ids, end_ids)
@@ -75,9 +97,7 @@ def evaluate_loop(model, data_loader):
     Given a dataset, it evals model and computes the metric.
     Args:
         model(obj:`paddle.nn.Layer`): A model to classify texts.
-        metric(obj:`paddle.metric.Metric`): The evaluation metric.
         data_loader(obj:`paddle.io.DataLoader`): The dataset loader which generates batches.
-        multilingual(bool): Whether is the multilingual model.
     """
     metric = SpanEvaluator()
     model.eval()

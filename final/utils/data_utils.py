@@ -67,7 +67,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[
                     else:
                         result_list[0]["start"] -= max_content_len
                         result_list[0]["end"] -= max_content_len
-                        break  # result list is sorted by start
+                        break
 
                 for each_result in current_content_result:
                     adjust_data = content[:max_content_len][each_result["start"] : each_result["end"]]
@@ -130,8 +130,6 @@ def align_to_offset_mapping(origin_index: int, offset_mapping: List[List[int]]) 
             return index
         if span[0] != 0 and span[1] != 0:
             final_index = index
-
-    # raise PreprocessingError(f"Not found origin_index: {origin_index} in offset_mapping")
     return final_index + 1
 
 
@@ -149,7 +147,7 @@ def convert_to_uie_format(
         在 finetune.py 中，設定此方法為預設 Callback Function，可根據任務或模型換成自定義方法。
 
     ** Tokenize Bug **
-        - Tokenizer 可能會因為中文的一些字 Unknown 導致 Bug。
+        - Tokenizer 可能會因為中文的一些字 Unknown 導致 Bug (UIE Pretrained Model 並無此問題)。
         - 可參考：https://github.com/PaddlePaddle/PaddleNLP/issues?q=is%3Aissue+is%3Aopen+out+of+range+
         - 實測後可能有 Bug 的模型包含 xlnet, roformer.
         - 實測後正常的模型包含 uie, bert.
@@ -165,7 +163,6 @@ def convert_to_uie_format(
         Dict[str, Union[str, float]]: 模型真正的 input 格式。
     """
 
-    # Tokenization and Concate to the following format: [CLS] prompt [SEP] content [SEP]
     try:
         encoded_inputs = tokenizer(
             text=[data["prompt"]],
@@ -196,9 +193,6 @@ def convert_to_uie_format(
         )[0]
         data["result_list"] = []
 
-    #  len(tokenizer(text=[data["prompt"]], text_pair=[data["content"]])['input_ids'][0])
-
-    # initialize start_ids, end_ids as 0.0
     start_ids, end_ids = map(lambda x: x * max_seq_len, ([0.0], [0.0]))
 
     # adjust offset_mapping

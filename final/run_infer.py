@@ -12,6 +12,7 @@ from paddlenlp.trainer import PdArgumentParser
 import os
 import json
 from tqdm import tqdm
+import re
 
 
 class Processer:
@@ -22,14 +23,10 @@ class Processer:
         select_key: List[str] = ["text", "start", "end", "probability"],
         is_regularize_data: bool = False,
     ) -> None:
-
-        """
-        each_entity_results (example): [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46060848236083984}, {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.8074951171875}]
-        """
         self.select_strategy_fun = eval("self._" + select_strategy + "_postprocess")
         self.threshold = threshold if threshold else 0.5
         self.select_key = select_key if select_key else ["text", "start", "end", "probability"]
-        self.preprocess = self._regularize_preprocess if is_regularize_data else lambda x: x
+        self.is_regularize_data = is_regularize_data
 
     def _key_filter(strategy_fun):
         def select_key(self, each_entity_results):
@@ -40,6 +37,9 @@ class Processer:
 
         return select_key
 
+    def preprocess(self, text):
+        return self._do_preprocess(text) if self.is_regularize_data else text
+
     def postprocess(self, results):
         new_result = []
         for result in results:
@@ -49,9 +49,14 @@ class Processer:
             new_result.append(tmp)
         return new_result
 
-    def _regularize_preprocess(self, text):
-        # TODO regularized_token
-        pass
+    def _do_preprocess(self, text):
+        """
+        Override this method if you want to inject some custom behavior
+        """
+
+        for re_term in regularized_token:
+            text = re.sub(re_term, "", text)
+        return text
 
     @_key_filter
     def _max_postprocess(self, each_entity_results):
@@ -64,6 +69,16 @@ class Processer:
     @_key_filter
     def _all_postprocess(self, each_entity_results):
         return each_entity_results
+
+    @_key_filter
+    def _CustomizeYourName_postprocess(self, each_entity_results):
+        """
+        1. Set --select_strategy CustomizeYourName
+           Any select strategy can be implemented here.
+
+        2. each_entity_results (example): [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46060848236083984}, {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.8074951171875}]
+        """
+        pass
 
 
 def inference(
@@ -113,10 +128,6 @@ def inference(
 if __name__ == "__main__":
     parser = PdArgumentParser((InferenceDataArguments, InferenceStrategyArguments, InferenceTaskflowArguments))
     data_args, strategy_args, taskflow_args = parser.parse_args_into_dataclasses()
-
-    if taskflow_args.precision == "fp16" and taskflow_args.device_id == -1:
-        logger.warning("Cannot apply fp16 on cpu. Auto-adjust to fp32.")
-        taskflow_args.precision = "fp32"
 
     uie_processer = Processer(
         select_strategy=strategy_args.select_strategy,

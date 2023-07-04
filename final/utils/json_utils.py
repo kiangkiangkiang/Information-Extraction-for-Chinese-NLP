@@ -171,6 +171,7 @@ def regularize_json_file(
 
     Args:
         json_file (str): A JSON file path which contains several JSONs which want to be regularized.
+        out_variable (bool): Defaults to False. If the output is a python varialble not write a file.
         output_path (str, optional): The path of regularized JSON. Defaults to "./".
         regularize_text (Optional[List[str]], optional): List of the special tokens. Each string in the list must be only one character (len(TOKEN) == 1).  Defaults to ["\n", " ", "\u3000"].
         special_result_case (Optional[List[str]], optional): Other special case which cannot be regularize in regularize_text. Defaults to [r"\n"].
