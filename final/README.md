@@ -161,6 +161,8 @@ python run_infer.py \
 8. 整理所有 function docstring 和程式碼命名等等
 # 未完成
 3. test case
+3. requirements.txt
+3. README.md
 4. 看能不能實驗的時候 也能看所有指標
 5. mlflow
 
