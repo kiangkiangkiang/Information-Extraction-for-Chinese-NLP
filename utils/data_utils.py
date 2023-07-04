@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Optional, List, Any, Dict, Union, Tuple, Iterator
 from paddlenlp.utils.log import logger
 from paddle.io import BatchSampler, DataLoader, DistributedBatchSampler
@@ -22,6 +23,9 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[
     Yields:
         Iterator[Dict[str, str]]: 每個batch所吃的原始文本（Before tokenization）。
     """
+
+    if not os.path.exists(data_path):
+        raise ValueError(f"Path not found {data_path}.")
 
     with open(data_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -47,9 +51,7 @@ def read_data_by_chunk(data_path: str, max_seq_len: int = 512) -> Iterator[Dict[
                         or result_list[0]["end"] - result_list[0]["start"] > max_content_len
                     ):
                         raise DataError(
-                            f"Error in result list. Invalid start or end location\
-                                (start: {result_list[0]['start']}, end: {result_list[0]['end']}).\
-                                    Please check the data in {data_path}."
+                            f"Error in result list. Invalid start or end location (start: {result_list[0]['start']}, end: {result_list[0]['end']}). Please check the data in {data_path}."
                         )
                     if result_list[0]["start"] < max_content_len:
                         if result_list[0]["end"] > max_content_len:
@@ -162,6 +164,8 @@ def convert_to_uie_format(
     Returns:
         Dict[str, Union[str, float]]: 模型真正的 input 格式。
     """
+    if not data:
+        return None
 
     try:
         encoded_inputs = tokenizer(

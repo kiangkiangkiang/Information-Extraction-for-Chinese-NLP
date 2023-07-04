@@ -31,7 +31,6 @@ def finetune(
 ) -> None:
 
     train_path, dev_path, test_path = (os.path.join(dataset_path, file) for file in (train_file, dev_file, test_file))
-    # Path Checking
     if not os.path.exists(train_path):
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
     if not os.path.exists(dev_path):
@@ -62,6 +61,7 @@ def finetune(
     )
 
     # Model & Data Setup
+    # TODO 這邊如果不放dev_path會有問題
     set_device(training_args.device)
     train_dataset, dev_dataset, test_dataset = (
         load_dataset(
