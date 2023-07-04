@@ -112,17 +112,6 @@ python run_eval.py \
     --batch_size 8
 ```
 
-``` python
-# test
-python run_eval.py \
-    --model_name_or_path ./results/checkpoint/model_best/checkpoint-6000 \
-    --dev_file ./data/model_input_data/test.txt \
-    --device gpu:3 \
-    --is_eval_by_class True \
-    --max_seq_len 512 \
-    --batch_size 16
-```
-
 ### 重要參數
 
 - `--device`: 預設`gpu`，選擇用何種裝置訓練模型，可使用`cpu`或是指定 gpu ，例如：`gpu:0`。
@@ -143,20 +132,7 @@ python run_infer.py \
     --precision fp32 \
     --batch_size 16 \
     --task_path ./results/checkpoint/model_best \
-    --select_key all \
-    --select_strategy threshold \
-    --select_strategy_threshold 0.5
-```
-
-``` python
-# test
-python run_infer.py \
-    --data_file ./data/model_input_data/example.txt \
-    --save_dir ./results/inference_results/ \
-    --precision fp32 \
-    --batch_size 16 \
-    --task_path ./results/checkpoint/model_best \
-    --select_key all w\
+    --select_key text probability \
     --select_strategy threshold \
     --select_strategy_threshold 0.5
 ```
@@ -170,9 +146,12 @@ python run_infer.py \
 - `--device_id`: 預設`gpu`，選擇用何種裝置訓練模型，可使用`cpu`或是指定 gpu ，例如：`gpu:0`。
 - `--precision`: 預設`train.txt`，訓練資料集檔名。
 - `--batch_size`: 預設`16`，模型所使用的批次資料數量。
-- model
-- taskpath
-
+- `--model`: 預設`uie-base`，用來推論的模型。
+- `--taskpath`: 用來推論所使用的 checkpoint 檔案位置。
+- `select_strategy`: 
+select_strategy
+select_strategy_threshold
+select_key
 - `--model_name_or_path`: 預設`uie-base`，訓練時所使用的模型或是模型 checkpoint 路徑。
 - `--max_seq_len`: 預設`512`，模型在每個 batch 所吃的最大文本長度。
 - `--per_device_train_batch_size`: 預設`16`，模型在每個裝置訓練所使用的批次資料數量。

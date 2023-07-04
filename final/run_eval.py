@@ -41,6 +41,7 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
     name_mapping = {entity[:min_word]: entity for entity in entity_type}
     model.eval()
     for batch in tqdm(data_loader):
+        #
         start_ids = np.array(batch.pop("start_positions"))
         end_ids = np.array(batch.pop("end_positions"))
         start_prob, end_prob = model(**batch)
