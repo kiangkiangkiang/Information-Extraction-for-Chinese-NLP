@@ -77,7 +77,7 @@ def adjust_verdict_to_csv_format(verdict, drop_keys=["jfull_compress", "uie_infe
 
 def write_json_list_to_csv(file_list, write_keys=None, save_dir="./verdict8000_uie_inference_result.csv"):
     header = write_keys if write_keys else list(file_list[0].keys())
-    with open(save_dir, "w", encoding="utf8") as f:
+    with open(save_dir, "w", encoding="utf_8_") as f:
         writer = csv.writer(f)
         writer.writerow(header)
         for file in file_list:
