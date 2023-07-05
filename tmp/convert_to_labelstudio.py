@@ -20,6 +20,8 @@ if __name__ == "__main__":
     with open("./label_studio_format.json", "r", encoding="utf-8") as f:
         label_studio_template = json.loads(f.read())
 
+    result_counter = 0
+
     for i, verdict in enumerate(verdict_8000):
         tmp = ""
         tmp = label_studio_template.copy()
@@ -45,13 +47,14 @@ if __name__ == "__main__":
                         "text": each_result["text"],
                         "labels": [each_result["entity"]],
                     },
-                    "id": str(i),
+                    "id": str(result_counter),
                     "from_name": "label",
                     "to_name": "text",
                     "type": "labels",
                     "origin": "manual",
                 }
             )
+            result_counter += 1
         tmp.update(
             {
                 "annotations": [{"result": tmp_result}],
