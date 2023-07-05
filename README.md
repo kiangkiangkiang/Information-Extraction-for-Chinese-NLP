@@ -162,6 +162,16 @@ python run_infer.py \
     --select_strategy_threshold 0.5
 ```
 
+``` python
+#test
+python run_infer.py \
+    --data_file ./data/model_infer_data/verdict8000.txt \
+    --save_dir ./results/inference_results/ \
+    --precision fp32 \
+    --batch_size 16 \
+    --task_path ./results/checkpoint/checkpoint-9200 
+```
+
 ### 重要參數
 
 - `--data_file`: 預設`dev.txt`，驗證資料集檔名。
