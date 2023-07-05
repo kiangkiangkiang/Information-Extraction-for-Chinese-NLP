@@ -1,4 +1,4 @@
-level_0,index,id,jid,jyear,jcase,jno,jdate_dt,jtitle,jtype,litigation_type,etl_datetime,source_id,source_cnt,source_id_v2,source_cnt_v2,精神慰撫金額,醫療費用,薪資收入
+﻿level_0,index,id,jid,jyear,jcase,jno,jdate_dt,jtitle,jtype,litigation_type,etl_datetime,source_id,source_cnt,source_id_v2,source_cnt_v2,精神慰撫金額,醫療費用,薪資收入
 0,0,35864,"CLEV,106,壢簡,1417,20180629,2",106,壢簡,1417,1530230400000,損害賠償,中壢簡易庭,民事判決,1688136019337,0,1,0,1,"200,000元","23,990元","20,008元"
 1,1,36141,"CLEV,107,壢小,1073,20181228,2",107,壢小,1073,1545955200000,損害賠償,中壢簡易庭,民事判決,1688136019337,1,1,1,1,"30,000元","4,373元",nan
 2,2,124007,"HLDV,107,原訴,15,20180822,1",107,原訴,15,1534896000000,侵權行為損害賠償,臺灣花蓮地方法院,民事判決,1688136019337,2,1,2,1,1萬元,416元,"41,000元"
