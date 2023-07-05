@@ -21,16 +21,19 @@ if __name__ == "__main__":
         label_studio_template = json.loads(f.read())
 
     for i, verdict in enumerate(verdict_8000):
+        tmp = ""
         tmp = label_studio_template.copy()
-        tmp["id"] = verdict["id"]
-        tmp["data"]["jid"] = verdict["jid"]
-        tmp["data"]["text"] = verdict["jfull_compress"]
+        tmp.update(
+            {
+                "id": verdict["id"],
+                "data": {
+                    "jid": verdict["jid"],
+                    "text": verdict["jfull_compress"],
+                },
+                "annotations": [{"id": i, "task": i, "project": 0, "completed_by": {"email": "aaa1aaa@gmail.com"}}],
+            }
+        )
 
-        tmp["annotations"][0]["id"] = i
-        tmp["annotations"][0]["task"] = i
-        tmp["annotations"][0]["project"] = 0
-
-        tmp["annotations"][0]["result"]
         tmp_result = []
         uie_result = flatten_uie_output(verdict["uie_inference_results_with_checkpoint_9200"])
         for each_result in uie_result:
@@ -49,7 +52,11 @@ if __name__ == "__main__":
                     "origin": "manual",
                 }
             )
-        tmp["annotations"][0]["result"] = tmp_result
+        tmp.update(
+            {
+                "annotations": [{"result": tmp_result}],
+            }
+        )
 
         label_studio_result.append(tmp)
 
