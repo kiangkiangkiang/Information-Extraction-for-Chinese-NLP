@@ -162,22 +162,12 @@ python run_infer.py \
     --select_strategy_threshold 0.5
 ```
 
-``` python
-#test
-python run_infer.py \
-    --data_file ./data/model_infer_data/verdict8000.txt \
-    --save_dir ./results/inference_results/ \
-    --precision fp32 \
-    --batch_size 16 \
-    --task_path ./results/checkpoint/checkpoint-9200 
-```
-
 ### 重要參數
 
 - `--data_file`: 預設`dev.txt`，驗證資料集檔名。
 - `--save_dir`: **必須**，模型訓練產生的 checkpoint 檔案位置。
 - `--is_regularize_data`: 預設`False`，是否在轉換前清除特殊字元，ex. "\n"。
-- `--precision`: 預設`fp32`，模型推論時的精確度，可使用`fp16`或`fp32`，其中`fp16`較快，在 gpu 環境下使用`fp16`需注意CUDA>=11.2，cuDNN>=8.1.1，初次使用需按照提示安装相關依賴（`pip install onnxruntime-gpu onnx onnxconverter-common`）。
+- `--precision`: 預設`fp32`，模型推論時的精確度，可使用`fp16` (only for gpu) 或`fp32`，其中`fp16`較快，使用`fp16`需注意CUDA>=11.2，cuDNN>=8.1.1，初次使用需按照提示安装相關依賴（`pip install onnxruntime-gpu onnx onnxconverter-common`）。
 - `--batch_size`: 預設`16`，模型所使用的批次資料數量。
 - `--taskpath`: 用來推論所使用的 checkpoint 檔案位置。
 - `select_strategy`: 預設`all`，模型推論完後，保留推論結果的策略，`all`表示所有推論結果皆保留。其他可選`max`，表示保留機率最高的推論結果。`threshold`表示推論結果機率值高於`select_strategy_threshold`的結果皆保留。
@@ -206,3 +196,56 @@ python run_infer.py \
 
 
 
+
+
+``` python
+#test
+python run_infer.py \
+    --data_file ./data/model_infer_data/verdict_gpu0_2062.txt \
+    --save_dir ./results/inference_results/ \
+    --save_name inference_result_verdict_gpu0_2062.txt \
+    --device_id 0 \
+    --precision fp32 \
+    --batch_size 16 \
+    --is_regularize_data True \
+    --task_path ./results/checkpoint/checkpoint-9200 
+```
+
+``` python
+#test
+python run_infer.py \
+    --data_file ./data/model_infer_data/verdict_gpu1_2062_4124.txt \
+    --save_dir ./results/inference_results/ \
+    --save_name inference_result_verdict_gpu1_2062_4124.txt \
+    --device_id 1 \
+    --precision fp32 \
+    --batch_size 16 \
+    --is_regularize_data True \
+    --task_path ./results/checkpoint/checkpoint-9200 
+```
+
+``` python
+#test
+python run_infer.py \
+    --data_file ./data/model_infer_data/verdict_gpu2_4124_6186.txt \
+    --save_dir ./results/inference_results/ \
+    --save_name inference_result_verdict_gpu2_4124_6186.txt \
+    --device_id 2 \
+    --precision fp32 \
+    --batch_size 16 \
+    --is_regularize_data True \
+    --task_path ./results/checkpoint/checkpoint-9200 
+```
+
+``` python
+#test
+python run_infer.py \
+    --data_file ./data/model_infer_data/verdict_gpu3_6186_8250.txt \
+    --save_dir ./results/inference_results/ \
+    --save_name inference_result_verdict_gpu3_6186_8250.txt \
+    --device_id 3 \
+    --precision fp32 \
+    --batch_size 16 \
+    --is_regularize_data True \
+    --task_path ./results/checkpoint/checkpoint-9200 
+```

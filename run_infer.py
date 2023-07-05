@@ -166,7 +166,7 @@ if __name__ == "__main__":
         with open(data_args.data_file, "r", encoding="utf8") as f:
             text_list = [line.strip() for line in f]
 
-        with open(os.path.join(data_args.save_dir, "inference_results.txt"), "w", encoding="utf8") as f:
+        with open(os.path.join(data_args.save_dir, data_args.save_name), "w", encoding="utf8") as f:
             for content, result in zip(text_list, inference_result):
                 out_result.append(
                     {

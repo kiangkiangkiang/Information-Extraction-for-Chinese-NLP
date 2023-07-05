@@ -153,6 +153,11 @@ class InferenceDataArguments:
         metadata={"help": "The path where you wanna to save results of inference. If None, model won't write data."},
     )
 
+    save_name: str = field(
+        default="inference_results.txt",
+        metadata={"help": "Name of the inference results file."},
+    )
+
     is_regularize_data: bool = field(
         default=False,
         metadata={"help": "Whether to regularize data (remove special tokens likes \\n). Defaults to False"},
