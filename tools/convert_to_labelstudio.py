@@ -1,8 +1,7 @@
-# convert the label result to label studio format
-from paddlenlp.utils.log import logger
 import json
 import argparse
 import datetime
+import os
 
 
 def get_labelstudio_template(path):
@@ -38,7 +37,7 @@ def flatten_uie_output(uie_result: dict, threshold=0.5):
     return flatten_uie_result
 
 
-def uie_result_to_labelstudio(uie_result, labelstudio_mail, task_id=0):
+def uie_result_to_labelstudio(uie_result, labelstudio_mail, label_studio_template, task_id=0):
     labelstudio_format_result = label_studio_template.copy()
     labelstudio_format_result.update(
         {
@@ -78,8 +77,21 @@ def uie_result_to_labelstudio(uie_result, labelstudio_mail, task_id=0):
     return labelstudio_format_result
 
 
-# python convert_to_labelstudio.py --uie_results_path ./inference_results.txt --labelstudio_mail aaa1aaa@gmail.com
+#
 if __name__ == "__main__":
+    """將「run_infer.py」inference 產生的結果，轉換成 label studio 格式，使其結果能在 label studio 上呈現。
+
+    注意：Inference 結果必須要包含 「text, start, end」，因此在 run_infer.py 時，select_key 最少要有此三項。
+
+    Example:
+        python convert_to_labelstudio.py \
+            --uie_results_path ./inference_results.txt \
+            --labelstudio_mail aaa1aaa@gmail.com
+
+    Raises:
+        ValueError: uie_results_path is not found.
+        ValueError: labelstudio_template_path is not found.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--uie_results_path", type=str)
     parser.add_argument("--labelstudio_mail", type=str)
@@ -87,6 +99,16 @@ if __name__ == "__main__":
     parser.add_argument("--save_name", type=str, default="uie_result_for_labelstudio.json")
     parser.add_argument("--labelstudio_template_path", type=str, default="./labelstudio_template.json")
     args = parser.parse_args()
+
+    if not os.path.exists(args.uie_results_path):
+        raise ValueError(f"Path not found: {args.uie_results_path}.")
+
+    if not os.path.exists(args.labelstudio_template_path):
+        raise ValueError(f"Path not found: {args.labelstudio_template_path}.")
+
+    if not os.path.exists(args.save_path):
+        print(f"Path not found: {args.save_path}. Auto-create the path...")
+        os.mkdir(args.save_path)
 
     uie_result_list = read_uie_inference_results(path=args.uie_results_path)
     label_studio_template = get_labelstudio_template(path=args.labelstudio_template_path)
@@ -97,10 +119,13 @@ if __name__ == "__main__":
             uie_result_to_labelstudio(
                 uie_result=uie_result,
                 labelstudio_mail=args.labelstudio_mail,
+                label_studio_template=label_studio_template,
                 task_id=id,
             )
         )
 
-    with open("./uie_result_verdict_8000_with_label_studio.json", "w", encoding="utf8") as f:
+    with open(os.path.join(args.save_path, args.save_name), "w", encoding="utf8") as f:
         tmp = json.dumps(label_studio_result, ensure_ascii=False)
         f.write(tmp)
+
+    print("Finish...")
