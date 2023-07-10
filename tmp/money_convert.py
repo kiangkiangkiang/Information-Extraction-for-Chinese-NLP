@@ -95,3 +95,6 @@ for i in (16, 17, 18):
             number_of_money.append("nan")
     print("finish")
 breakpoint()
+
+if __name__ == "__main__":
+    pass

@@ -1,4 +1,5 @@
 paddlenlp >= 2.5.2 
 paddlepaddle-gpu >= 2.5.0 
-
+cn2an >= 0.5.20
+OpenCC >= 1.1.6
 
