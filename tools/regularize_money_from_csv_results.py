@@ -87,13 +87,13 @@ class ArabicNumbersFormatter(object):
             return result
 
     def __format_arabic_numbers(self, money: str) -> str:
-        """TODO
+        """格式化數值：將金錢統一轉成中文。
 
         Args:
-            money (str): _description_
+            money (str): Mix of Chinese and Arabic numbers
 
         Returns:
-            str: _description_
+            str: If successfully convert, return the money with Arabic numbers only. Else, return the original input money.
         """
         money = money + "元" if money[-1] != "元" else money
         found_chinese = re.finditer("[\u4e00-\u9fa5]+", money)
