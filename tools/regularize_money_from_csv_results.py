@@ -177,9 +177,8 @@ if __name__ == "__main__":
         logger.info(f"==========Arabic Numbers Converting: {each_entity}==========")
         regularized_money_list = formatter.chinese_to_number(money_list=csv_results.loc[:, each_entity].tolist())
         csv_results.loc[:, each_entity] = regularized_money_list
-        breakpoint()
     logger.info("Finish Converting...")
 
-    logger.info(f"Write the results into {os.path.join(args.save_path, args.save_name)}...")
+    logger.info(f"Write the results into {os.path.join(args.save_path, args.save_name)}")
     csv_results.to_csv(os.path.join(args.save_path, args.save_name), header=True, index=False, encoding="utf_8_sig")
     logger.info(f"Finish.")

@@ -192,7 +192,7 @@ if __name__ == "__main__":
             )
         )
 
-    logger.info(f"Finish converting. Write results to {os.path.join(args.save_path, args.save_name)}...")
+    logger.info(f"Finish converting. Write results to {os.path.join(args.save_path, args.save_name)}")
 
     with open(os.path.join(args.save_path, args.save_name), "w", encoding="utf8") as f:
         tmp = json.dumps(label_studio_result, ensure_ascii=False)
