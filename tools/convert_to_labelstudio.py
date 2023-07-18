@@ -198,4 +198,4 @@ if __name__ == "__main__":
         tmp = json.dumps(label_studio_result, ensure_ascii=False)
         f.write(tmp)
 
-    logger.info(f"Conversion successful.")
+    logger.info("Conversion successful.")

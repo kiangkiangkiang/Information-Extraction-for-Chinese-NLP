@@ -76,7 +76,9 @@ class Processer:
         1. Set --select_strategy CustomizeYourName
            Any select strategy can be implemented here.
 
-        2. each_entity_results (example): [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46060848236083984}, {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.8074951171875}]
+        2. each_entity_results (example):
+            [{'text': '22,154元', 'start': 1487, 'end': 1494, 'probability': 0.46},
+             {'text': '2,954元', 'start': 3564, 'end': 3570, 'probability': 0.80}]
         """
         pass
 

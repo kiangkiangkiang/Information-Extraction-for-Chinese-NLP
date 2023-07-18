@@ -30,7 +30,7 @@ def get_min_word_in_entity_type(entity_type: List[str]) -> int:
     min_word = np.min([len(i) for i in entity_type])
     distinct_entity_type = [i[:min_word] for i in entity_type]
     if len(pd.unique(distinct_entity_type)) != len(entity_type):
-        raise ValueError(f"Unable to distinguish different entity types. Please adjust entity type or the method.")
+        raise ValueError("Unable to distinguish different entity types. Please adjust entity type or the method.")
     return min_word
 
 
@@ -72,7 +72,8 @@ def evaluate_loop_by_class(model, data_loader, entity_type, tokenizer):
         for each_group in unique_group:
             if name_mapping[each_group] not in entity_type:
                 raise DataError(
-                    f"Cannot map {name_mapping[each_group]} to {entity_type}, check if the entity type is modified or data is not preprocessed to UIE-input-format."
+                    f"Cannot map {name_mapping[each_group]} to {entity_type}, "
+                    + "check if the entity type is modified or data is not preprocessed to UIE-input-format."
                 )
             selected_group = eval_group == each_group
             num_correct, num_infer, num_label = metric[name_mapping[each_group]].compute(

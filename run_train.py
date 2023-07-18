@@ -31,47 +31,38 @@ def finetune(
 ) -> None:
 
     train_path, dev_path, test_path = (os.path.join(dataset_path, file) for file in (train_file, dev_file, test_file))
+    working_data = {"train": None}
     if not os.path.exists(train_path):
         raise ValueError(f"Training data not found in {train_path}. Please input the correct path of training data.")
     if not os.path.exists(dev_path):
-        if training_args.do_eval == True:
+        if training_args.do_eval:
             logger.warning(
                 f"Evaluation data not found in {dev_path}. \
                 Please input the correct path of evaluation data.\
                     Auto-training without evaluation data..."
             )
         training_args.do_eval = False
+    else:
+        working_data["dev"] = None
     if not os.path.exists(test_path):
-        if training_args.do_predict == True:
+        if training_args.do_predict:
             logger.warning(
                 f"Testing data not found in {test_path}. \
                 Please input the correct path of testing data.\
                     Auto-training without testing data..."
             )
         training_args.do_predict = False
+    else:
+        working_data["test"] = None
 
     if training_args.load_best_model_at_end and not training_args.do_eval:
         raise ValueError(
-            "Cannot load best model at end when do_eval is False. Auto-adjust. Please adjust load_best_model_at_end or do_eval."
+            "Cannot load best model at end when do_eval is False. Auto-adjust. "
+            + "Please adjust load_best_model_at_end or do_eval."
         )
-
-    logger.info(
-        f"Process rank: {training_args.local_rank}, device: {training_args.device}, world_size: {training_args.world_size}, "
-        + f"distributed training: {bool(training_args.local_rank != -1)}, 16-bits training: {training_args.fp16}"
-    )
 
     # Model & Data Setup
-    # TODO 這邊如果不放dev_path會有問題
     set_device(training_args.device)
-    train_dataset, dev_dataset, test_dataset = (
-        load_dataset(
-            read_data_by_chunk,
-            data_path=data,
-            max_seq_len=max_seq_len,
-            lazy=False,
-        )
-        for data in (train_path, dev_path, test_path)
-    )
     tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     model = UIE.from_pretrained(model_name_or_path)
     convert_function = partial(
@@ -79,18 +70,22 @@ def finetune(
         tokenizer=tokenizer,
         max_seq_len=max_seq_len,
     )
-    # TODO solve none dev_dataset
-    train_dataset, dev_dataset, test_dataset = (
-        data.map(convert_function) for data in (train_dataset, dev_dataset, test_dataset)
-    )
+    for data in working_data:
+        working_data[data] = load_dataset(
+            read_data_by_chunk,
+            data_path=eval(f"{data}_path"),
+            max_seq_len=max_seq_len,
+            lazy=False,
+        )
+        working_data[data] = working_data[data].map(convert_function)
 
     # Trainer Setup
     trainer = Trainer(
         model=model,
         criterion=criterion,
         args=training_args,
-        train_dataset=train_dataset if training_args.do_train else None,
-        eval_dataset=dev_dataset if training_args.do_eval else None,
+        train_dataset=working_data["train"] if training_args.do_train else None,
+        eval_dataset=working_data["dev"] if training_args.do_eval else None,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
         optimizers=optimizers,
@@ -137,7 +132,7 @@ def finetune(
 
     # Start Testing
     if training_args.do_predict:
-        predict_output = trainer.predict(test_dataset=test_dataset)
+        predict_output = trainer.predict(test_dataset=working_data["test"])
         trainer.log_metrics("test", predict_output.metrics)
 
     # export inference model

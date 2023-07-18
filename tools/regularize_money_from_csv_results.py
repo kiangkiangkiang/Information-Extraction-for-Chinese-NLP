@@ -181,4 +181,4 @@ if __name__ == "__main__":
 
     logger.info(f"Write the results into {os.path.join(args.save_path, args.save_name)}")
     csv_results.to_csv(os.path.join(args.save_path, args.save_name), header=True, index=False, encoding="utf_8_sig")
-    logger.info(f"Finish.")
+    logger.info("Finish.")
