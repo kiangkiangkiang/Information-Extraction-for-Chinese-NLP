@@ -166,7 +166,6 @@ def regularize_json_file(
     regularize_text: Optional[List[str]] = ["\n", " ", "\u3000"],
     special_result_case: Optional[List[str]] = [r"\\n"],
 ) -> None:
-    # TODO update doc string
     """Regularize the JSON file list.
 
     Args:
