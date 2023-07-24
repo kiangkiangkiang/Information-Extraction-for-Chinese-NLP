@@ -175,6 +175,6 @@ python run_infer.py \
 - `--precision`: 預設`fp32`，模型推論時的精確度，可使用`fp16` (only for gpu) 或`fp32`，其中`fp16`較快，使用`fp16`需注意CUDA>=11.2，cuDNN>=8.1.1，初次使用需按照提示安装相關依賴（`pip install onnxruntime-gpu onnx onnxconverter-common`）。
 - `--batch_size`: 預設`16`，模型所使用的批次資料數量。
 - `--taskpath`: 用來推論所使用的 checkpoint 檔案位置。
-- `select_strategy`: 預設`all`，模型推論完後，保留推論結果的策略，`all`表示所有推論結果皆保留。其他可選`max`，表示保留機率最高的推論結果。`threshold`表示推論結果機率值高於`select_strategy_threshold`的結果皆保留。
-- `select_strategy_threshold`: 預設`0.5`，表示當`select_strategy=threshold`時的門檻值。
-- `select_key`: 預設`text start end probability`，表示最終推論保留的值。僅保留文字及機率可設`text probability`。
+- `--select_strategy`: 預設`all`，模型推論完後，保留推論結果的策略，`all`表示所有推論結果皆保留。其他可選`max`，表示保留機率最高的推論結果。`threshold`表示推論結果機率值高於`select_strategy_threshold`的結果皆保留。
+- `--select_strategy_threshold`: 預設`0.5`，表示當`select_strategy=threshold`時的門檻值。
+- `--select_key`: 預設`text start end probability`，表示最終推論保留的值。僅保留文字及機率可設`text probability`。
